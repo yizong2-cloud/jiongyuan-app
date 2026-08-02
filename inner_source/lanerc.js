@@ -839,9 +839,13 @@ function _payload(value) {
 
 var _LANERC_PIC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36';
 
+
+
 function _lanercCoverPic(pic) {
     var url = String(pic || '');
     if (!url) return '';
+    if (url.indexOf('@Referer=') !== -1 || url.indexOf('@User-Agent=') !== -1 || url.indexOf('@Headers=') !== -1) return url;
+    if (url.indexOf('doubanio.com') === -1) return url;
     return url + '@Referer=https://movie.douban.com/@User-Agent=' + _LANERC_PIC_UA;
 }
 
@@ -980,7 +984,9 @@ function _getHome() {
 function _buildHomeSections() {
     var home = _getHome();
     var sections = [];
+    var banner = _cards(home.banner, '推荐');
     var hot = _cards(home.hot_list, '热门');
+    if (banner.length) sections.push({ title: '轮播', key: '__hero__', items: banner });
     if (hot.length) sections.push({ title: '热门', key: '', items: hot });
 
     var vodList = _legacyIsArray(home.vod_list) ? home.vod_list : [];
@@ -1569,7 +1575,7 @@ function DetailedComponent_getDetailed(summary) {
 
 // ---------- Play ----------
 function PlayComponent_getPlayInfo(summary, playLine, episode) {
-    var r = srcJson(play, episode.id);
+    var r = srcJson(play, String(episode.id));  // episode.id 是 Kotlin 实体属性(Java String)，必须转 JS 字符串
     if (r == null) throw new ParserException("play parse failed");
     var url = String(r.url || "");
     if (url.length == 0) throw new ParserException("empty play url");
@@ -1592,3 +1598,4 @@ function PlayComponent_getPlayInfo(summary, playLine, episode) {
     }
     return info;
 }
+
