@@ -1,0 +1,69 @@
+package com.heyanle.easybangumi4.plugin.api.component.play
+
+
+import com.heyanle.easybangumi4.plugin.api.SourceResult
+import com.heyanle.easybangumi4.plugin.api.component.Component
+import com.heyanle.easybangumi4.plugin.api.component.VerificationResult
+import com.heyanle.easybangumi4.plugin.api.entity.Cartoon
+import com.heyanle.easybangumi4.plugin.api.entity.CartoonSummary
+import com.heyanle.easybangumi4.plugin.api.entity.Episode
+import com.heyanle.easybangumi4.plugin.api.entity.PlayLine
+import com.heyanle.easybangumi4.plugin.api.entity.PlayerInfo
+import com.heyanle.easybangumi4.utils.logi
+
+/**
+ * Created by HeYanLe on 2023/10/18 23:28.
+ * https://github.com/heyanLE
+ */
+interface PlayComponent: Component {
+
+    /**
+     * 获取播放信息
+     * @param playLine 对应的播放线路
+     * @param episode 集
+     */
+    suspend fun getPlayInfo(
+        summary: CartoonSummary,
+        playLine: PlayLine,
+        episode: Episode,
+        canCache: Boolean = true,
+    ): SourceResult<PlayerInfo>
+
+    suspend fun getPlayInfo(
+        cartoon: Cartoon,
+        playLine: PlayLine,
+        episode: Episode,
+        canCache: Boolean = true,
+    ): SourceResult<PlayerInfo> {
+        return getPlayInfo(CartoonSummary(cartoon.id, cartoon.source), playLine, episode, canCache)
+            .apply {
+                this@PlayComponent.logi("PlayComponent")
+            }
+    }
+
+    suspend fun getPlayInfo(
+        summary: CartoonSummary,
+        playLine: PlayLine,
+        episode: Episode,
+        verificationResult: VerificationResult,
+        canCache: Boolean = true,
+    ): SourceResult<PlayerInfo> {
+        return getPlayInfo(summary, playLine, episode, canCache)
+            .apply {
+                this@PlayComponent.logi("PlayComponent")
+            }
+    }
+
+    suspend fun getPlayInfo(
+        cartoon: Cartoon,
+        playLine: PlayLine,
+        episode: Episode,
+        verificationResult: VerificationResult,
+        canCache: Boolean = true,
+    ): SourceResult<PlayerInfo> {
+        return getPlayInfo(CartoonSummary(cartoon.id, cartoon.source), playLine, episode, verificationResult, canCache)
+            .apply {
+                this@PlayComponent.logi("PlayComponent")
+            }
+    }
+}
