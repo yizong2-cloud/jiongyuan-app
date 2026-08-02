@@ -91,6 +91,34 @@ fun ColumnScope.PlayerSetting(
             preference = settingPreferences.useExternalVideoPlayer
         )
 
+        // 高清渲染 (Anime4K) —— 默认开启，可关闭（持久化）
+        BooleanPreferenceItem(
+            title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_title)) },
+            subtitle = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_summary)) },
+            preference = settingPreferences.anime4kEnabled
+        )
+
+        StringSelectPreferenceItem(
+            title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_mode)) },
+            textList = com.heyanle.easybangumi4.anime4k.A4KChain.MODE_NAMES,
+            select = settingPreferences.anime4kMode.get().coerceIn(0, com.heyanle.easybangumi4.anime4k.A4KChain.MODE_NAMES.lastIndex),
+        ) {
+            settingPreferences.anime4kMode.set(it)
+        }
+
+        StringSelectPreferenceItem(
+            title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality)) },
+            textList = listOf(
+                stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality_s),
+                stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality_m),
+                stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality_l),
+            ),
+            select = com.heyanle.easybangumi4.anime4k.A4KChain.QUALITIES
+                .indexOf(settingPreferences.anime4kQuality.get()).coerceAtLeast(0),
+        ) {
+            settingPreferences.anime4kQuality.set(com.heyanle.easybangumi4.anime4k.A4KChain.QUALITIES[it])
+        }
+
         BooleanPreferenceItem(
             title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.player_bottom_nav_padding)) },
             preference = settingPreferences.playerBottomNavigationBarPadding

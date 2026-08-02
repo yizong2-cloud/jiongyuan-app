@@ -54,6 +54,14 @@
     <string name="player_bottom_nav_padding">平板模式播放器底部抬高</string>
     <string name="player_orientation_mode">跟随传感器切换全屏</string>
 
+    <string name="anime4k_title">高清渲染 (Anime4K)</string>
+    <string name="anime4k_summary">开启后用 Anime4K 算法放大并锐化画面，提高画质</string>
+    <string name="anime4k_mode">渲染方案</string>
+    <string name="anime4k_quality">渲染质量</string>
+    <string name="anime4k_quality_s">快速</string>
+    <string name="anime4k_quality_m">标准</string>
+    <string name="anime4k_quality_l">高画质</string>
+
     <string name="double_tap_fast">双击快进快退</string>
     <string name="fast_time">快进快退时间（秒）</string>
 

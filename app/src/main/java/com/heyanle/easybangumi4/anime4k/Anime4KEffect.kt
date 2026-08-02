@@ -1,0 +1,27 @@
+package com.heyanle.easybangumi4.anime4k
+
+import android.content.Context
+import androidx.media3.common.VideoFrameProcessingException
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.GlEffect
+import androidx.media3.effect.GlShaderProgram
+
+/**
+ * Anime4K 高清渲染效果。
+ *
+ * 挂到 ExoPlayer#setVideoEffects 上即可：管线在解码帧（NATIVE 尺寸）上运行
+ * 整条 shader 链，输出放大后的帧，由 Media3 呈现。
+ */
+@OptIn(UnstableApi::class)
+class Anime4KEffect(
+    private val passes: List<A4KPass>,
+) : GlEffect {
+
+    override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
+        return Anime4KRenderer(useHdr, passes)
+    }
+
+    override fun isNoOp(inputWidth: Int, inputHeight: Int): Boolean {
+        return passes.isEmpty()
+    }
+}

@@ -54,6 +54,14 @@ class SettingPreferences(
     var playerBottomNavigationBarPadding =
         preferenceStore.getBoolean("player_bottom_nav_padding", true)
 
+    // 高清渲染 (Anime4K)
+    // 默认开启（对齐囧次元体验），可关闭；持久化于 MMKV
+    var anime4kEnabled = preferenceStore.getBoolean("anime4k_enabled", true)
+    // 渲染方案 0..6（见 A4KChain.MODE_NAMES）
+    val anime4kMode = preferenceStore.getInt("anime4k_mode", 1)
+    // 渲染质量 S/M/L
+    val anime4kQuality = preferenceStore.getString("anime4k_quality", "M")
+
     val cacheSizeSelection = listOf(
         0L to stringRes(com.heyanle.easy_i18n.R.string.disable),
         500L.mb to "500MB",
