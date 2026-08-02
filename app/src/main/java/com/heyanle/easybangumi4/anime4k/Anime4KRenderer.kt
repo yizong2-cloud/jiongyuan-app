@@ -27,6 +27,35 @@ internal class Anime4KRenderer(
 
     companion object {
         private const val TAG = "Anime4K"
+
+        /** 调试用透传链：三种偏移写法对照（R=浮点字面量 G=整数表达式 B=float() 转型） */
+        private const val PASSTHROUGH_SRC = """
+//!DESC f1
+//!HOOK MAIN
+//!BIND MAIN
+//!SAVE STATSMAX
+
+#define KERNELHALFSIZE 2
+float get_luma(vec4 rgba) {
+	return dot(vec4(0.299, 0.587, 0.114, 0.0), rgba);
+}
+vec4 hook() {
+	float a = get_luma(MAIN_texOff(vec2(0.0, 0.0)));
+	float b = get_luma(MAIN_texOff(vec2(2 - KERNELHALFSIZE, 0)));
+	float c = get_luma(MAIN_texOff(vec2(float(2 - KERNELHALFSIZE), 0.0)));
+	return vec4(a, b, c, 1.0);
+}
+
+//!DESC f2
+//!HOOK MAIN
+//!BIND HOOKED
+//!BIND STATSMAX
+//!SAVE MAIN
+
+vec4 hook() {
+    return vec4(STATSMAX_tex(HOOKED_pos).rgb, 1.0);
+}
+"""
     }
 
     private class Fbo(val texId: Int, val fboId: Int, val w: Int, val h: Int)
@@ -68,7 +97,7 @@ internal class Anime4KRenderer(
         val scale = A4KChain.scaleFor(inputHeight)
         // WHEN 的 OUTPUT 引用 = 目标输出尺寸（等价 mpv 窗口尺寸）
         val outputRef = Pair(inputWidth * scale, inputHeight * scale)
-        val result = simulate(inputWidth, inputHeight, outputRef)
+        val result = simulate(passes, inputWidth, inputHeight, outputRef)
         releaseGl()
         sim = result
         outputW = result.outW
@@ -88,14 +117,19 @@ internal class Anime4KRenderer(
         Log.d(
             TAG,
             "Anime4K chain: in=${inputWidth}x$inputHeight scale=$scale " +
-                "passes=${result.infos.size} out=${result.outW}x$result.outH"
+                "passes=${result.infos.size} out=${result.outW}x${result.outH}"
         )
         return Size(outputW, outputH)
     }
 
     // ---------- 链模拟（尺寸 / WHEN / 绑定 / 活跃回收） ----------
 
-    private fun simulate(inW: Int, inH: Int, outputRef: Pair<Int, Int>): SimResult {
+    private fun simulate(
+        passList: List<A4KPass>,
+        inW: Int,
+        inH: Int,
+        outputRef: Pair<Int, Int>,
+    ): SimResult {
         val nsSize = HashMap<String, Pair<Int, Int>>()
         val nsGen = HashMap<String, Int>()
         nsSize["NATIVE"] = inW to inH
@@ -107,7 +141,7 @@ internal class Anime4KRenderer(
         val lastUse = HashMap<Int, Int>() // gen → 最后一次被绑定的 active 索引（-1 = 从未）
         var genCounter = 0
 
-        for (p in passes) {
+        for (p in passList) {
             val sizeOf: (String) -> Pair<Float, Float>? = { name ->
                 when (name) {
                     "OUTPUT" -> outputRef.first.toFloat() to outputRef.second.toFloat()
@@ -202,6 +236,10 @@ internal class Anime4KRenderer(
         try {
             val result = sim ?: return
             if (result.infos.isEmpty()) return
+            // 输出 FBO：基类 queueInputFrame 在调用 drawFrame 前聚焦了输出池纹理。
+            // 必须在绑定任何中间 FBO 之前读取（否则读到的是上一个 pass 的 FBO）。
+            val outputFbo = IntArray(1)
+            GLES30.glGetIntegerv(GLES30.GL_FRAMEBUFFER_BINDING, outputFbo, 0)
             val texIds = HashMap<String, Int>()
             texIds["NATIVE"] = inputTexId
             texIds["MAIN"] = inputTexId
@@ -214,9 +252,7 @@ internal class Anime4KRenderer(
                 val outW: Int
                 val outH: Int
                 if (isLast) {
-                    val fb = IntArray(1)
-                    GLES30.glGetIntegerv(GLES30.GL_FRAMEBUFFER_BINDING, fb, 0)
-                    outFbo = fb[0]
+                    outFbo = outputFbo[0]
                     outTex = 0 // 链尾输出无需登记命名空间
                     outW = outputW
                     outH = outputH

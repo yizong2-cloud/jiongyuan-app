@@ -98,7 +98,7 @@ fun CartoonPlay(
     val controlVM = ControlViewModelFactory.viewModel(
         playingVM.exoPlayer,
         isPad,
-        render = playingVM.easyTextRenderer
+        render = playingVM.render
     )
 
     LaunchedEffect(summary) {

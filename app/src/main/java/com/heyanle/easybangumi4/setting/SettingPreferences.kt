@@ -45,7 +45,8 @@ class SettingPreferences(
 
     val playerOrientationMode = preferenceStore.getEnum<PlayerOrientationMode>(
         "player_orientation_mode",
-        PlayerOrientationMode.Auto
+        // 囧源默认竖屏锁定：手机横放不再自动切横屏（可在设置里改回）
+        PlayerOrientationMode.Disable
     )
 
     // 使用外置播放器

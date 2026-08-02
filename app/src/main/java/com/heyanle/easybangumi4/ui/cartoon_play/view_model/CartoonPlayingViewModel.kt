@@ -45,12 +45,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
+import loli.ball.easyplayer2.surface.SurfacePlayerRender
 import loli.ball.easyplayer2.texture.TexturePlayerRender
 import java.io.File
 
@@ -86,6 +89,12 @@ class CartoonPlayingViewModel(
     }
 
     // 渲染器 =================================================
+    // 囧源：Media3 1.4 效果管线（VideoGraph）要求有效输出 surface，
+    // TextureView 在该管线下 EGL 渲染报 "Make sure the SurfaceView..."，
+    // 因此主渲染统一用 SurfaceView（截图/录制功能依赖 TextureView，已优雅降级）。
+    val render: SurfacePlayerRender = SurfacePlayerRender()
+
+    // 截图/录制用的 TextureView 渲染（SurfaceView 模式下 view 为 null，功能自动降级）
     val easyTextRenderer: TexturePlayerRender = TexturePlayerRender()
         .apply {
             setExtSurfaceTextureListener(this@CartoonPlayingViewModel)
@@ -529,6 +538,24 @@ class CartoonPlayingViewModel(
         thumbnailBuffer = ThumbnailBuffer(thumbnailFolder)
         playingInfo = playerInfo
         "play-media action=set uri=${playerInfo.uri} source=${cartoonPlayingState?.cartoonSummary?.source} cartoonId=${cartoonPlayingState?.cartoonSummary?.id} cache=$canMediaCache".logi(TAG)
+        // 囧源：Media3 1.4 效果管线（VideoGraph）要求 codec 初始化前有有效输出 surface，
+        // 否则 renderer 退回 placeholder surface，EGL 渲染报
+        // "Make sure the SurfaceView or associated SurfaceHolder has a valid Surface"。
+        // 播放前等待渲染视图 surface 就绪。
+        runCatching {
+            withTimeoutOrNull(5000) {
+                while (true) {
+                    val v = render.getViewOrNull()
+                    val ready = when (v) {
+                        is android.view.SurfaceView -> v.holder?.surface?.isValid == true
+                        is android.view.TextureView -> v.isAvailable
+                        else -> false
+                    }
+                    if (ready) break
+                    delay(50)
+                }
+            }
+        }
         // 本地番源不过缓存
         val media =
             if (!canMediaCache || cartoonPlayingState?.cartoonSummary?.source?.equals(LocalSource.LOCAL_SOURCE_KEY) == true)

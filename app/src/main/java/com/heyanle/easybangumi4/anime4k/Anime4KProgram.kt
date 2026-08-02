@@ -114,7 +114,8 @@ internal class Anime4KProgram(
         for (name in bindNames) {
             sb.append("#define ${name}_pos v_uv\n")
             sb.append("#define ${name}_tex(c) texture($name, c)\n")
-            sb.append("#define ${name}_texOff(x_off, y_off) ${name}_tex(v_uv + vec2(x_off, y_off) * ${name}_pt)\n")
+            // mpv 语义：单参数 vec2 偏移（video.c hook_prelude 原文）
+            sb.append("#define ${name}_texOff(off) ${name}_tex(v_uv + vec2(off) * ${name}_pt)\n")
         }
         if ("HOOKED" !in bindNames) {
             val t = pass.hookTarget
@@ -124,8 +125,19 @@ internal class Anime4KProgram(
             sb.append("#define HOOKED_pt ${t}_pt\n")
             sb.append("#define HOOKED_size ${t}_size\n")
         }
-        sb.append(pass.body)
-        if (!pass.body.endsWith("\n")) sb.append("\n")
+        var body = pass.body
+        // Adreno GLSL ES 编译器：vec2(<非常量整数表达式>, ...) 构造产生垃圾坐标（运行时 0），
+        // 且拒绝 float 与 const int 的混合运算/比较。
+        // 1) 循环变量改 float；
+        // 2) 循环条件 `i<X` / 运算 `i - X`（X 为大写宏常量）统一转 float；
+        // 3) vec2 构造中的整数 0 字面量转 0.0（混合类型构造同样不可靠）。
+        body = Regex("for \\(int (\\w+)=0;").replace(body) { "for (float ${it.groupValues[1]}=0.0;" }
+        body = Regex("(\\w+)<([A-Z][A-Z_0-9]*)").replace(body) { "${it.groupValues[1]}<float(${it.groupValues[2]})" }
+        body = Regex("(\\w+) - KERNELHALFSIZE").replace(body) { "${it.groupValues[1]} - float(KERNELHALFSIZE)" }
+        body = Regex("vec2\\(([^,)]*), 0\\)").replace(body) { "vec2(${it.groupValues[1]}, 0.0)" }
+        body = Regex("vec2\\(0, ([^,)]*)\\)").replace(body) { "vec2(0.0, ${it.groupValues[1]})" }
+        sb.append(body)
+        if (!body.endsWith("\n")) sb.append("\n")
         sb.append("void main() { out_color = hook(); }\n")
         return sb.toString()
     }
