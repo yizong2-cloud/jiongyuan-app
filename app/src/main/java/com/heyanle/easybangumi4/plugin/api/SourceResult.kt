@@ -52,7 +52,7 @@ suspend fun <T> withResult(
 }
 
 @Keep
-class ParserException(
+class ParserException @JvmOverloads constructor(
     override val message: String?,
     val exception: Throwable? = null,
 ) : Exception(message, exception)

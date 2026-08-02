@@ -837,10 +837,12 @@ function _payload(value) {
 }
 
 
+var _LANERC_PIC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36';
+
 function _lanercCoverPic(pic) {
     var url = String(pic || '');
     if (!url) return '';
-    return url;
+    return url + '@Referer=https://movie.douban.com/@User-Agent=' + _LANERC_PIC_UA;
 }
 
 

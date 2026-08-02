@@ -131,6 +131,7 @@ fun OkImage(
             else -> {
                 val (cleanImage, urlHeaders) = parseCoverImage(image)
                 val mergedHeaders = urlHeaders + (headers ?: emptyMap())
+                android.util.Log.d("Jiongyuan", "OkImage url=${image?.toString()?.take(120)} parsed=${cleanImage?.toString()?.take(80)} hdrs=$mergedHeaders")
                 AsyncImage(
                     model = ImageRequest
                         .Builder(LocalContext.current)
