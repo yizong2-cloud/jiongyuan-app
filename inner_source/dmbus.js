@@ -1,0 +1,871 @@
+// @key com.lanerc.dmbus
+// @label 囧源·动漫巴士
+// @versionName 1.0.0
+// @versionCode 1
+// @libVersion 15
+// @cover https://img9.doubanio.com/view/photo/s_ratio_poster/public/p2932543896.webp
+//
+// 囧次元 囧源·动漫巴士 内容源（EasyBangumi / 纯纯看番 扩展）
+// 逆向自 jiong-ciyuan.apk 内置脚本 dmbus.js，经 __JB 桥适配运行。免登录 / 免广告。
+//
+var ext = {"site":"https://dmbus.cc"};
+// ============================================================
+//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
+// ============================================================
+var JB64 = Packages.android.util.Base64;
+var okhttpHelper = Inject_OkhttpHelper;
+
+// ---------- 常量 ----------
+var B64U = JB64.URL_SAFE | JB64.NO_WRAP | JB64.NO_PADDING;
+
+// ---------- opts 归一化：源脚本可能传 JS 对象，也可能传 JSON 字符串 ----------
+function normOpts(o) {
+    if (o == null) return {};
+    if (typeof o === "object") return o;
+    try { return parseJson(String(o)) || {}; } catch (e) { return {}; }
+}
+
+// ---------- HTTP ----------
+function httpDo(url, method, body, opts) {
+    var o = normOpts(opts);
+    var headers = o.headers || {};
+    var timeout = o.timeout || 20000;
+    var cs = String(o.charset || 'utf-8').toLowerCase();
+    var isLatin1 = (cs === 'iso-8859-1' || cs === 'latin1');
+    var b = new Request.Builder().url(url);
+    for (var k in headers) if (headers.hasOwnProperty(k)) b.header(k, String(headers[k]));
+    if (method === "POST") {
+        if (body == null) body = "";
+        var mt = "text/plain; charset=utf-8";
+        if (headers["Content-Type"]) mt = headers["Content-Type"];
+        var bodyBytes = isLatin1
+            ? new java.lang.String(body).getBytes("ISO-8859-1")
+            : new java.lang.String(body).getBytes("UTF-8");
+        b.post(RequestBody.create(bodyBytes, MediaType.parse(mt)));
+    } else {
+        b.get();
+    }
+    var resp = okhttpHelper.client.newCall(b.build()).execute();
+    var out;
+    try {
+        if (isLatin1 && typeof resp.body().bytes === 'function') {
+            // 二进制/字节透传：每个字节 → 一个 char(0-255)，避免 UTF-8 损坏
+            var bytes = resp.body().bytes();
+            var sb = new StringBuilder();
+            for (var i = 0; i < bytes.length; i++) sb.append(String.fromCharCode(bytes[i] & 0xff));
+            out = String(sb.toString());
+        } else {
+            out = String(resp.body().string());
+        }
+    } finally { resp.close(); }
+    return out;
+}
+
+function request(u, o)  { return httpDo(String(u), "GET", null, o); }
+function get(u, o)      { return httpDo(String(u), "GET", null, o); }
+function post(u, b2, o) { return httpDo(String(u), "POST", b2 == null ? "" : String(b2), o); }
+
+var http = {
+    request:  function (u, o) { return request(u, o); },
+    get:      function (u, o) { return get(u, o); },
+    post:     function (u, b2, o) { return post(u, b2, o); },
+    request2: function (u, o) { return request(u, o); },
+    post2:    function (u, b2, o) { return post(u, b2, o); },
+    resolveRedirect: function (u, o) { return request(u, o); },
+    setCookies:   function (host, cookies) {},
+    getCookies:   function (host) { return "{}"; },
+    clearCookies: function (host) {}
+};
+
+// ---------- 摘要 ----------
+function digestHex(algo, s) {
+    var md = java.security.MessageDigest.getInstance(algo);
+    var d = md.digest(new java.lang.String(s == null ? "" : String(s)).getBytes("UTF-8"));
+    var sb = new StringBuilder();
+    for (var i = 0; i < d.length; i++) {
+        var x = d[i] & 0xff;
+        if (x < 16) sb.append("0");
+        sb.append(Integer.toHexString(x));
+    }
+    return String(sb.toString().toLowerCase());
+}
+function md5(s)    { return digestHex("MD5", s); }
+function sha1(s)   { return digestHex("SHA-1", s); }
+function sha256(s) { return digestHex("SHA-256", s); }
+function sha512(s) { return digestHex("SHA-512", s); }
+
+// ---------- base64 / hex ----------
+function base64Encode(s) {
+    var b = new java.lang.String(s == null ? "" : String(s)).getBytes("UTF-8");
+    return String(JB64.encodeToString(b, JB64.NO_WRAP));
+}
+function base64Decode(s) {
+    var raw = JB64.decode(String(s == null ? "" : s), JB64.DEFAULT);
+    return String(new java.lang.String(raw, "UTF-8"));
+}
+function hexEncode(s) {
+    var b = new java.lang.String(String(s)).getBytes("UTF-8");
+    var sb = new StringBuilder();
+    for (var i = 0; i < b.length; i++) { var x = b[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); }
+    return String(sb.toString());
+}
+function hexDecode(s) {
+    var str = String(s); var out = new java.io.ByteArrayOutputStream();
+    for (var i = 0; i + 1 < str.length; i += 2) out.write(parseInt(str.substr(i, 2), 16) & 0xff);
+    return String(new java.lang.String(out.toByteArray(), "UTF-8"));
+}
+
+// ---------- URI ----------
+function encodeUri(s) { return encodeURIComponent(s == null ? "" : String(s)); }
+function decodeUri(s) { return decodeURIComponent(s == null ? "" : String(s)); }
+
+// ---------- 正则（对齐 Java Pattern）----------
+function match(t, r, g) {
+    t = t == null ? "" : String(t);
+    var p = java.util.regex.Pattern.compile(String(r));
+    var m = p.matcher(t);
+    if (!m.find()) return "";
+    try { return m.group(g == null ? 1 : g); } catch (e) { return m.group(); }
+}
+function matchAll(t, r) {
+    t = t == null ? "" : String(t);
+    var p = java.util.regex.Pattern.compile(String(r));
+    var m = p.matcher(t);
+    var arr = [];
+    while (m.find()) {
+        var grp = [];
+        for (var i = 0; i <= m.groupCount(); i++) grp.push(m.group(i));
+        arr.push(grp);
+    }
+    return JSON.stringify(arr);
+}
+
+// ---------- 其他 ----------
+function timestamp() { return Date.now(); }  // 对齐原版 JsBuiltinFunctions: System.currentTimeMillis() 毫秒
+function log(s) { JSLogUtils.i("JB", String(s)); }
+function getItem(k, d) { return d == null ? "" : String(d); }
+function setItem(k, v) {}
+function removeItem(k) {}
+function parseJson(s) {
+    if (s != null && typeof s === 'object') {
+        // 已包装字符串（java.lang.String / mock JavaString）→ 解包再解析
+        if (typeof s.getBytes === 'function' || typeof s._s === 'string') {
+            try { return JSON.parse(s.toString()); } catch (e) { return null; }
+        }
+        return s;  // 纯 JS 对象（crypto opts 等）直接用
+    }
+    try { return JSON.parse(String(s)); } catch (e) { return null; }
+}
+function toJson(o) { try { return JSON.stringify(o); } catch (e) { return ""; } }
+function sniffMedia(u, o) { return { ok: false, url: "", error: "not supported" }; }
+function sniffAll(u, o) { return { ok: false, list: [], error: "not supported" }; }
+
+// ---------- crypto ----------
+function hmacHex(algo, key, msg) {
+    var mac = Mac.getInstance(algo);
+    mac.init(new javax.crypto.spec.SecretKeySpec(new java.lang.String(key == null ? "" : String(key)).getBytes("UTF-8"), algo.replace("-", "")));
+    var d = mac.doFinal(new java.lang.String(msg == null ? "" : String(msg)).getBytes("UTF-8"));
+    var sb = new StringBuilder();
+    for (var i = 0; i < d.length; i++) { var x = d[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); }
+    return String(sb.toString().toLowerCase());
+}
+function aesDo(ciphertext, key, opts, encrypt) {
+    var o = normOpts(opts);
+    var mode = String(o.mode || "ECB").toUpperCase();
+    var pad  = String(o.padding || "PKCS5");
+    // 对齐 JsBuiltinFunctions.java：encrypt 默认 input=utf8/output=base64，decrypt 默认 input=base64/output=utf8
+    var inF  = String(o.input || (encrypt ? "utf8" : "base64")).toLowerCase();
+    var outF = String(o.output || (encrypt ? "base64" : "utf8")).toLowerCase();
+    var keyStr = String(key == null ? "" : key);
+    var keyBytes = (o.keyFormat && String(o.keyFormat).toLowerCase() === "hex")
+        ? hexToBytes(keyStr) : new java.lang.String(keyStr).getBytes("UTF-8");
+    var data;
+    if (inF === "hex") data = hexToBytes(String(ciphertext));
+    else if (inF === "utf8") data = new java.lang.String(ciphertext == null ? "" : String(ciphertext)).getBytes("UTF-8");
+    else data = JB64.decode(String(ciphertext == null ? "" : ciphertext), JB64.DEFAULT);
+    var jpad = (pad.toLowerCase() === "nopadding" || pad.toLowerCase() === "zero" || pad.toLowerCase() === "zeropadding") ? "NoPadding" : "PKCS5Padding";
+    var ci = Cipher.getInstance("AES/" + mode + "/" + jpad);
+    var spec = new javax.crypto.spec.SecretKeySpec(keyBytes, "AES");
+    if (mode === "ECB") {
+        ci.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, spec);
+    } else {
+        var ivBytes = (o.iv && String(o.ivFormat).toLowerCase() === "hex") ? hexToBytes(String(o.iv)) : new java.lang.String(String(o.iv || "")).getBytes("UTF-8");
+        ci.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, spec, new javax.crypto.spec.IvParameterSpec(ivBytes));
+    }
+    var out = ci.doFinal(data);
+    if (outF === "hex") { var sb = new StringBuilder(); for (var i = 0; i < out.length; i++) { var x = out[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); } return String(sb.toString()); }
+    if (outF === "base64") return String(JB64.encodeToString(out, JB64.NO_WRAP));
+    return String(new java.lang.String(out, "UTF-8"));
+}
+function hexToBytes(s) {
+    var str = String(s); var out = new java.io.ByteArrayOutputStream();
+    for (var i = 0; i + 1 < str.length; i += 2) out.write(parseInt(str.substr(i, 2), 16) & 0xff);
+    return out.toByteArray();
+}
+function inflateDecode(input) {
+    var raw = JB64.decode(String(input), JB64.DEFAULT);
+    var inf = new java.util.zip.Inflater();
+    inf.setInput(raw);
+    var buf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 65536);
+    var out = new java.io.ByteArrayOutputStream();
+    while (!inf.finished()) { var n = inf.inflate(buf); if (n <= 0) break; out.write(buf, 0, n); }
+    inf.end();
+    return String(new java.lang.String(out.toByteArray(), "UTF-8"));
+}
+
+var crypto = {
+    md5: function (s) { return md5(s); },
+    sha1: function (s) { return sha1(s); },
+    sha256: function (s) { return sha256(s); },
+    sha512: function (s) { return sha512(s); },
+    hash: function (algo, input, o) {
+        var a = String(algo).toUpperCase().replace("-", "");
+        if (a === "MD5") return md5(input);
+        if (a === "SHA1") return sha1(input);
+        if (a === "SHA256") return sha256(input);
+        if (a === "SHA512") return sha512(input);
+        return "";
+    },
+    hmac: function (algo, key, msg, o) {
+        var a = String(algo).toUpperCase().replace("-", "");
+        return hmacHex("Hmac" + a, key, msg);
+    },
+    aes: {
+        encrypt: function (p, k, o) { return aesDo(p, k, o, true); },
+        decrypt: function (c, k, o) { return aesDo(c, k, o, false); }
+    },
+    base: {
+        encode: function (s, o) {
+            var op = normOpts(o);
+            var inF = String(op.input || "utf8").toLowerCase();
+            var data = (inF === "hex") ? hexToBytes(String(s))
+                     : (inF === "base64") ? JB64.decode(String(s == null ? "" : s), JB64.DEFAULT)
+                     : new java.lang.String(s == null ? "" : String(s)).getBytes("UTF-8");
+            return String(JB64.encodeToString(data, JB64.NO_WRAP));
+        },
+        decode: function (s, o) {
+            var op = normOpts(o);
+            var outF = String(op.output || "utf8").toLowerCase();
+            var raw = JB64.decode(String(s == null ? "" : s), JB64.DEFAULT);
+            if (outF === "hex") { var sb = new StringBuilder(); for (var i = 0; i < raw.length; i++) { var x = raw[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); } return String(sb.toString()); }
+            return new java.lang.String(raw, "UTF-8");
+        }
+    },
+    base64: {
+        encode: function (s, o) { return crypto.base.encode(s, o); },
+        decode: function (s, o) { return crypto.base.decode(s, o); }
+    },
+    hex: {
+        encode: function (s, o) {
+            var op = normOpts(o);
+            var inF = String(op.input || "utf8").toLowerCase();
+            var data = (inF === "hex") ? hexToBytes(String(s))
+                     : (inF === "base64") ? JB64.decode(String(s == null ? "" : s), JB64.DEFAULT)
+                     : new java.lang.String(s == null ? "" : String(s)).getBytes("UTF-8");
+            var sb = new StringBuilder();
+            for (var i = 0; i < data.length; i++) { var x = data[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); }
+            return String(sb.toString());
+        },
+        decode: function (s, o) {
+            var op = normOpts(o);
+            var outF = String(op.output || "utf8").toLowerCase();
+            var raw = hexToBytes(String(s == null ? "" : s));
+            if (outF === "hex") { return hexEncode(new java.lang.String(raw, "UTF-8")); }
+            if (outF === "base64") return String(JB64.encodeToString(raw, JB64.NO_WRAP));
+            return new java.lang.String(raw, "UTF-8");
+        }
+    },
+    inflate: function (input, o) { return inflateDecode(input); },
+    gzip: { decode: function (input, o) { return inflateDecode(input); } },
+    rsa: { encrypt: function (p, k, o) { return rsaDo(p, k, o, true); }, decrypt: function (c, k, o) { return rsaDo(c, k, o, false); } }
+};
+function rsaDo(input, keyStr, o, encrypt) {
+    var opts = normOpts(o);
+    var inF  = String(opts.input || (encrypt ? "utf8" : "base64")).toLowerCase();
+    var outF = String(opts.output || (encrypt ? "base64" : "utf8")).toLowerCase();
+    var data;
+    if (inF === "hex") data = hexToBytes(String(input));
+    else if (inF === "utf8") data = new java.lang.String(input == null ? "" : String(input)).getBytes("UTF-8");
+    else data = JB64.decode(String(input == null ? "" : input), JB64.DEFAULT);
+    var kf = java.security.KeyFactory.getInstance("RSA");
+    var spec = encrypt
+        ? new java.security.spec.X509EncodedKeySpec(JB64.decode(String(keyStr), JB64.DEFAULT))
+        : new java.security.spec.PKCS8EncodedKeySpec(JB64.decode(String(keyStr), JB64.DEFAULT));
+    var key = encrypt ? kf.generatePublic(spec) : kf.generatePrivate(spec);
+    var ci = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+    ci.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, key);
+    var out = ci.doFinal(data);
+    if (outF === "hex") { var sb = new StringBuilder(); for (var i = 0; i < out.length; i++) { var x = out[i] & 0xff; if (x < 16) sb.append("0"); sb.append(Integer.toHexString(x)); } return String(sb.toString()); }
+    if (outF === "utf8") return String(new java.lang.String(out, "UTF-8"));
+    return String(JB64.encodeToString(out, JB64.NO_WRAP));
+}
+
+// ---------- UA 预设 ----------
+var UA = {
+    chrome:  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+    edge:    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.0.0",
+    firefox: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0",
+    safari:  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
+    iphone:  "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+    ipad:    "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+    android: "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+    mobile:  "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+    desktop: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+    okhttp:  "okhttp/4.12.0"
+};
+
+/*
+ * 动漫巴士（dmbus / dm84）JS 源 —— HTML 正则解析 + hhjx 播放器解密
+ * 站点：https://dmbus.cc   （备用域名 dm84.tv / dm84.vip→dmbus.cc，统一用手机 UA）
+ * version: 2.0.0  (2026-06-03 全量重写，基于 mydiy 模板真实页面结构 + hhjx api.php 解密)
+ *
+ * 页面结构（mydiy 模板）：
+ *   首页              /                       多张 card：热播/国产/日本/欧美/电影，每张含一个 ul.v_list
+ *   分类列表          /list-{1..4}.html        翻页 /list-{id}-{page}.html
+ *   筛选(类型/年份/排序) /show-{type}--{sort}-{class}--{year}-{page}.html
+ *   关键词搜索        /s----------.html?wd=KEYWORD
+ *   详情              /v/{id}.html             选集链接 /p/{id}-{line}-{ep}.html
+ *   播放页            /p/{id}-{line}-{ep}.html  内嵌 iframe → hhjx.hhplayer.com/index.php?url=HEX
+ *
+ * 取流链路（无需 WebView，纯接口解密）：
+ *   1) 抓 /p 播放页 → iframe src（hhjx index.php?url=HEX）
+ *   2) 抓 index.php → 取 var url / var t / var key=OKOK("base64")
+ *   3) OKOK 解码出 key（确定性变换，已在本文件复刻）
+ *   4) POST hhjx /api.php  body=url&t&key&act=0&play=1 → JSON {code:200,url:真实地址}
+ *   解密失败时兜底 sniffMedia(iframe) 走 WebView 嗅探。
+ *
+ * 分类 type_id：1=国漫(国产动漫) 2=日漫(日本动漫) 3=欧美 4=电影
+ */
+
+// ─────────────────────────────────────────────── 配置
+var EXT     = (typeof ext !== 'undefined' && ext) ? ext : {};
+var SITE    = (EXT.site || 'https://dmbus.cc').replace(/\/+$/, '');
+var UA_M    = (typeof UA !== 'undefined' && UA.iphone) ? UA.iphone
+            : 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
+var TIMEOUT = 15000;
+
+// 分类 tab（id ↔ 名称）
+var TYPES = [
+    { id: '1', name: '国漫' },
+    { id: '2', name: '日漫' },
+    { id: '3', name: '欧美' },
+    { id: '4', name: '电影' }
+];
+
+// 各分类「类型/剧情」筛选项（取自站点 list 页 list_filter；只放已确认的，未列分类只给排序+年份）
+var CLASS_OPTS = {
+    '1': ['玄幻', '穿越', '动态漫画', '热血', '搞笑', '恋爱', '奇幻', '武侠', '战斗', '悬疑', '日常', '格斗'],
+    '2': ['冒险', '奇幻', '战斗', '后宫', '热血', '励志', '搞笑', '校园', '机战', '悬疑', '治愈', '百合', '恐怖', '泡面番', '恋爱', '推理']
+};
+
+// ─────────────────────────────────────────────── 工具
+function trim(s) { return s == null ? '' : String(s).replace(/^\s+|\s+$/g, ''); }
+
+function decodeEntities(s) {
+    if (!s) return '';
+    return String(s)
+        .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"').replace(/&#0?39;/g, "'").replace(/&apos;/gi, "'")
+        .replace(/&#x([0-9a-fA-F]+);/g, function (m, h) { try { return String.fromCharCode(parseInt(h, 16)); } catch (e) { return m; } })
+        .replace(/&#(\d+);/g, function (m, d) { try { return String.fromCharCode(parseInt(d, 10)); } catch (e) { return m; } });
+}
+
+function stripTags(s) { return s ? String(s).replace(/<[^>]+>/g, '') : ''; }
+
+function guessType(u) {
+    var l = (u || '').toLowerCase();
+    if (l.indexOf('.m3u8') >= 0) return 'm3u8';
+    if (l.indexOf('.mp4') >= 0)  return 'mp4';
+    if (l.indexOf('.flv') >= 0)  return 'flv';
+    if (l.indexOf('.mkv') >= 0)  return 'mkv';
+    return 'auto';
+}
+
+function yearOpts() {
+    var out = [{ n: '全部', v: '' }];
+    var y = (new Date()).getFullYear();
+    for (var i = 0; i < 12; i++) out.push({ n: String(y - i), v: String(y - i) });
+    return out;
+}
+
+// GET（手机 UA + Referer）
+function req(url, referer) {
+    try {
+        return request(url, JSON.stringify({
+            headers: {
+                'User-Agent': UA_M,
+                'Referer': referer || (SITE + '/'),
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            timeout: TIMEOUT
+        })) || '';
+    } catch (e) { log('[dmbus] req err ' + url + ' :: ' + e); return ''; }
+}
+
+function reqPath(path, referer) { return req(SITE + path, referer); }
+
+// 解析一段含 ul.v_list 的 HTML，抽出影片条目
+function parseList(html) {
+    var out = [];
+    if (!html) return out;
+    var arr = parseJson(matchAll(html,
+        '<a href="/v/(\\d+)\\.html" class="cover lazy" data-bg="([^"]*)"[^>]*>[\\s\\S]*?<a class="title" href="/v/\\d+\\.html" title="([^"]*)">[\\s\\S]*?<span class="desc">([^<]*)</span>'
+    )) || [];
+    for (var i = 0; i < arr.length; i++) {
+        var m = arr[i];          // [整体, id, pic, name, remark]
+        var name = trim(decodeEntities(m[3]));
+        if (!name) continue;
+        out.push({
+            id:      m[1],
+            name:    name,
+            pic:     trim(m[2]),
+            type:    '',
+            year:    '',
+            remarks: trim(decodeEntities(m[4])),
+            desc:    ''
+        });
+    }
+    return out;
+}
+
+function dedup(list) {
+    var seen = {}, out = [];
+    for (var i = 0; i < list.length; i++) {
+        var id = list[i].id;
+        if (!id || seen[id]) continue;
+        seen[id] = 1; out.push(list[i]);
+    }
+    return out;
+}
+
+// ─────────────────────────────────────────────── 契约入口
+function categories() {
+    var ys = yearOpts();
+    var sorts = [{ n: '最新', v: 'time' }, { n: '最热', v: 'hits' }, { n: '评分', v: 'score' }];
+    var out = [{ key: '', title: '推荐' }];
+    for (var i = 0; i < TYPES.length; i++) {
+        var t = TYPES[i];
+        var filters = [{ key: 'sort', name: '排序', value: sorts }];
+        if (CLASS_OPTS[t.id]) {
+            var cv = [{ n: '全部', v: '' }];
+            var cs = CLASS_OPTS[t.id];
+            for (var j = 0; j < cs.length; j++) cv.push({ n: cs[j], v: cs[j] });
+            filters.push({ key: 'class', name: '类型', value: cv });
+        }
+        filters.push({ key: 'year', name: '年份', value: ys });
+        out.push({ key: t.id, title: t.name, filters: filters });
+    }
+    return JSON.stringify(out);
+}
+
+function homeSections() {
+    var html = reqPath('/');
+    var out = [];
+    if (html) {
+        // 每个分区 card 里有一个 a.c_title 标题 + 紧随的 ul.v_list
+        var chunks = html.split('class="c_title"');
+        for (var i = 1; i < chunks.length; i++) {
+            var c = chunks[i];
+            var title = trim(match(c, '^[^>]*>([^<]+)</a>', 1));
+            if (!title) continue;                               // 「热门动漫类型」用 </h3> 收尾，跳过
+            var listHtml = match(c, '<ul class="v_list[^"]*">([\\s\\S]*?)</ul>', 1);
+            if (!listHtml) continue;
+            var items = parseList(listHtml);
+            if (items.length) out.push({ title: title, key: '', items: items.slice(0, 12) });
+        }
+    }
+    return JSON.stringify(out);
+}
+
+function search(keyword, page) {
+    page = page || 1;
+    var key = trim(keyword || '');
+    // 首页推荐：聚合首页所有分区条目
+    if (!key) return JSON.stringify(dedup(parseList(reqPath('/'))));
+    // 分类 tab：list-{id}
+    if (/^[1-4]$/.test(key)) {
+        var lu = SITE + (page > 1 ? '/list-' + key + '-' + page + '.html' : '/list-' + key + '.html');
+        return JSON.stringify(parseList(req(lu)));
+    }
+    // 关键词搜索
+    var su = SITE + '/s----------.html?wd=' + encodeUri(key) + (page > 1 ? ('&page=' + page) : '');
+    return JSON.stringify(parseList(req(su)));
+}
+
+function searchFiltered(category, filtersJson, page) {
+    var f = parseJson(filtersJson) || {};
+    var type = (category && /^[1-4]$/.test(category)) ? category : '1';
+    var sort = f.sort || '';
+    var cls  = f['class'] ? encodeUri(f['class']) : '';
+    var year = (f.year && f.year !== '全部') ? f.year : '';
+    page = page || 1;
+    // 无任何筛选时退化成普通分类列表（翻页更稳）
+    if (!sort && !cls && !year) return search(type, page);
+    // /show-{type}-{}-{sort}-{class}-{}-{year}-{page}.html
+    var fields = [type, '', sort, cls, '', year, (page > 1 ? String(page) : '')];
+    var url = SITE + '/show-' + fields.join('-') + '.html';
+    return JSON.stringify(parseList(req(url)));
+}
+
+function detail(id) {
+    var out = { id: id, name: '', pic: '', type: '', year: '', remarks: '', desc: '', episodes: [] };
+    var html = reqPath('/v/' + id + '.html');
+    if (!html) return JSON.stringify(out);
+
+    out.name = trim(decodeEntities(
+        match(html, '<h1 class="v_title"><a[^>]*>([^<]+)</a>', 1) ||
+        match(html, 'og:title" content="《([^》]+)》', 1) || ''
+    ));
+    out.pic     = trim(match(html, 'og:image"\\s*content="([^"]+)"', 1) || match(html, '<div class="cover"><img src="([^"]+)"', 1) || '');
+    out.year    = trim(match(html, 'og:video:release_date" content="([^"]+)"', 1) || '');
+    out.remarks = trim(decodeEntities(match(html, 'class="v_desc"><span class="desc">([^<]*)<', 1) || ''));
+    out.type    = trim((match(html, 'og:video:class" content="([^"]*)"', 1) || '').split(',').slice(0, 2).join(' '));
+    out.desc    = trim(decodeEntities(stripTags(
+        match(html, '<div id="intro"><p>([\\s\\S]*?)</p>', 1) ||
+        match(html, 'og:description" content="([^"]*)"', 1) || ''
+    )));
+
+    // 线路名（tab_control play_from 里的若干 li）
+    var ctrl = match(html, '<ul class="tab_control play_from">([\\s\\S]*?)</ul>', 1) || '';
+    var lineNames = [];
+    var ln = parseJson(matchAll(ctrl, '<li[^>]*>([^<]+)</li>')) || [];
+    for (var a = 0; a < ln.length; a++) lineNames.push(trim(ln[a][1]));
+
+    // 选集：/p/{vod}-{line}-{ep}.html（按线路号分组，组内按集号升序）
+    var eps = parseJson(matchAll(html, '<a href="/p/(\\d+)-(\\d+)-(\\d+)\\.html"[^>]*>([^<]+)</a>')) || [];
+    var byLine = {}, order = [];
+    for (var i = 0; i < eps.length; i++) {
+        var vod = eps[i][1], lineNo = eps[i][2], ep = eps[i][3], label = trim(eps[i][4]);
+        if (!byLine[lineNo]) { byLine[lineNo] = []; order.push(lineNo); }
+        byLine[lineNo].push({ name: label || ep, url: '/p/' + vod + '-' + lineNo + '-' + ep + '.html', ep: parseInt(ep, 10) || 0 });
+    }
+    for (var k = 0; k < order.length; k++) {
+        var lineNo2 = order[k];
+        var list = byLine[lineNo2];
+        list.sort(function (x, y) { return x.ep - y.ep; });
+        var route = lineNames[k] || ('线路' + lineNo2);
+        for (var j = 0; j < list.length; j++) {
+            out.episodes.push({ name: list[j].name, url: list[j].url, route: route });
+        }
+    }
+    return JSON.stringify(out);
+}
+
+// hhjx 播放器 index.php 里的 OKOK：atob 后按 token 表贪婪还原（与站点 JS 一致）
+function okok(t) {
+    var ee = {
+        "0Oo0o0Oo": "a", "1O0bO001": "b", "1OoCcO1": "c", "3O0dO0O3": "d", "4OoEeO4": "e", "5O0fO0O5": "f",
+        "6OoGgO6": "g", "7O0hO0O7": "h", "8OoIiO8": "i", "9O0jO0O9": "j", "0OoKkO0": "k", "1O0lO0O1": "l",
+        "2OoMmO2": "m", "3O0nO0O3": "n", "4OoOoO4": "o", "5O0pO0O5": "p", "6OoQqO6": "q", "7O0rO0O7": "r",
+        "8OoSsO8": "s", "9O0tOoO9": "t", "0OoUuO0": "u", "1O0vO0O1": "v", "2OoWwO2": "w", "3O0xO0O3": "x",
+        "4OoYyO4": "y", "5O0zO0O5": "z",
+        "0OoAAO0": "A", "1O0BBO1": "B", "2OoCCO2": "C", "3O0DDO3": "D", "4OoEEO4": "E", "5O0FFO5": "F",
+        "6OoGGO6": "G", "7O0HHO7": "H", "8OoIIO8": "I", "9O0JJO9": "J", "0OoKKO0": "K", "1O0LLO1": "L",
+        "2OoMMO2": "M", "3O0NNO3": "N", "4OoOOO4": "O", "5O0PPO5": "P", "6OoQQO6": "Q", "7O0RRO7": "R",
+        "8OoSSO8": "S", "9O0TTO9": "T", "0OoUO0": "U", "1O0VVO1": "V", "2OoWWO2": "W", "3O0XXO3": "X",
+        "4OoYYO4": "Y", "5O0ZZO5": "Z"
+    };
+    var o = '';
+    try { o = base64Decode(t); } catch (e) { return ''; }
+    var n = '';
+    for (var i = 0; i < o.length; i++) {
+        var l = o.charAt(i);
+        for (var k in ee) {
+            if (ee.hasOwnProperty(k) && o.substr(i, k.length) === k) { l = ee[k]; i += k.length - 1; break; }
+        }
+        n += l;
+    }
+    return n;
+}
+
+// 把可能「无主机」的地址补成完整 http(s) 地址。
+//  - 完整 http(s):// 原样返回
+//  - 协议相对 //host/path → 补 https:
+//  - 主机相对 /path → 拼上 base 的 origin（hhjx 解密接口返回的 /cache/iqiyi/xxx.m3u8 就是这种，
+//    浏览器按播放器页面 origin 解析才能放；播放内核拿到裸 /path 会当本地文件打开 → 权限拒绝播不了）
+function absUrl(u, base) {
+    if (!u) return u;
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^\/\//.test(u)) return 'https:' + u;
+    if (/^\//.test(u) && base) return base + u;
+    return u;
+}
+
+function play(flag) {
+    var res = { url: '', type: 'auto', referer: '' };
+    var playUrl = /^https?:/i.test(flag) ? flag : (SITE + flag);
+
+    try {
+        var html = req(playUrl, SITE + '/');
+        var iframe = match(html, '<iframe[^>]*src="([^"]+)"', 1) || '';
+        iframe = iframe.replace(/&amp;/g, '&');
+        if (iframe && /^\/\//.test(iframe)) iframe = 'https:' + iframe;
+
+        // 标准链路：hhjx index.php → api.php 解密
+        if (iframe && iframe.indexOf('/index.php?url=') >= 0) {
+            var base = match(iframe, '^(https?://[^/]+)', 1) || '';
+            var pl = req(iframe, SITE + '/');
+            var u  = match(pl, 'var url\\s*=\\s*"([^"]+)"', 1);
+            var t  = match(pl, 'var t\\s*=\\s*"([^"]+)"', 1);
+            var kb = match(pl, 'var key\\s*=\\s*OKOK\\("([^"]+)"\\)', 1);
+            if (base && u && t && kb) {
+                var key = okok(kb);
+                var body = 'url=' + encodeUri(u) + '&t=' + encodeUri(t) + '&key=' + encodeUri(key) + '&act=0&play=1';
+                var resp = post(base + '/api.php', body, JSON.stringify({
+                    headers: {
+                        'User-Agent': UA_M,
+                        'Referer': iframe,
+                        'Origin': base,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    timeout: TIMEOUT
+                }));
+                var dj = parseJson(resp) || {};
+                if (dj.code == 200 && dj.url) {
+                    var real = String(dj.url).replace(/\\\//g, '/');
+                    // 关键修复：api.php 可能返回主机相对路径（/cache/iqiyi/xxx.m3u8），补成完整地址，
+                    // 否则播放内核把裸 /path 当本地文件 → EACCES 播不了（浏览器能放是因为按 origin 解析）。
+                    real = absUrl(real, base);
+                    if (dj.ext === 'link') {
+                        // 返回的是嵌套播放页 → WebView 嗅探
+                        var h2 = sniffMedia(real, { patterns: ['\\.m3u8(\\?|$)', '\\.mp4(\\?|$)'], userAgent: UA_M, referer: iframe, timeout: TIMEOUT });
+                        if (h2 && h2.ok && h2.url) { res.url = h2.url; res.type = guessType(h2.url); res.referer = h2.referer || ''; if (h2.headers) res.headers = h2.headers; return JSON.stringify(res); }
+                    } else {
+                        res.url = real;
+                        res.type = guessType(real);
+                        if (dj.referer && dj.referer !== 'never') res.referer = dj.referer;
+                        // 同源 /cache 资源多半要带 Referer 防盗链：接口没给 referer 时兜底用播放器页面，
+                        // 与浏览器请求该 m3u8 时携带的 Referer 一致。
+                        else if (base && real.indexOf(base) === 0) res.referer = iframe;
+                        return JSON.stringify(res);
+                    }
+                } else {
+                    log('[dmbus] api.php no url, resp=' + (resp ? String(resp).substring(0, 160) : ''));
+                }
+            }
+        }
+
+        // 兜底：直接 WebView 嗅探 iframe / 播放页
+        var hit = sniffMedia(iframe || playUrl, {
+            patterns: ['\\.m3u8(\\?|$)', '\\.mp4(\\?|$)'],
+            userAgent: UA_M, referer: SITE + '/', timeout: TIMEOUT, autoPlay: true
+        });
+        if (hit && hit.ok && hit.url) { res.url = hit.url; res.type = guessType(hit.url); res.referer = hit.referer || ''; if (hit.headers) res.headers = hit.headers; }
+    } catch (e) { log('[dmbus] play err: ' + e); }
+
+    return JSON.stringify(res);
+}
+
+// ============================================================
+//  通用组件壳 —— 把源脚本的标准输出映射成 EasyBangumi 组件
+//  源脚本必须暴露: homeSections() / categories() / search() / detail() / play()
+// ============================================================
+
+// ---------- 字段归一化 ----------
+function coverOf(it) {
+    if (it == null) return null;
+    var id = String(it.id != null ? it.id : (it.vod_id != null ? it.vod_id : ""));
+    var name = String(it.name != null ? it.name : (it.title != null ? it.title : (it.vod_name != null ? it.vod_name : "")));
+    var pic = String(it.pic != null ? it.pic : (it.cover != null ? it.cover : (it.vod_pic != null ? it.vod_pic : "")));
+    var intro = String(it.desc != null ? it.desc : (it.intro != null ? it.intro : (it.remarks != null ? it.remarks : (it.vod_blurb != null ? it.vod_blurb : ""))));
+    if (id.length == 0 || name.length == 0) return null;
+    return { id: id, name: name, pic: pic, intro: intro };
+}
+
+function srcJson(fn, arg) {
+    var raw;
+    try { raw = arg === undefined ? fn() : fn(arg); } catch (e) { return null; }
+    if (raw == null) return null;
+    if (typeof raw === "object") return raw;
+    try { return parseJson(String(raw)); } catch (e) { return null; }
+}
+
+function makeCard(it) {
+    var c = coverOf(it);
+    if (c == null) return null;
+    return makeCartoonCover({
+        id: c.id,
+        source: source.key,
+        url: c.id,
+        title: c.name,
+        cover: c.pic,
+        intro: c.intro
+    });
+}
+
+// ---------- 缓存 ----------
+var S_HOME = null;
+function getHomeSections() {
+    if (S_HOME != null) return S_HOME;
+    if (typeof homeSections !== "function") { S_HOME = []; return S_HOME; }
+    var arr = srcJson(homeSections);
+    S_HOME = Array.isArray(arr) ? arr : [];
+    return S_HOME;
+}
+var S_CATS = null;
+function getCats() {
+    if (S_CATS != null) return S_CATS;
+    var arr = srcJson(categories);
+    S_CATS = Array.isArray(arr) ? arr : [];
+    return S_CATS;
+}
+
+// ---------- Preference ----------
+function PreferenceComponent_getPreference() {
+    return new ArrayList();
+}
+
+// ---------- Page ----------
+// getMainTabs 必须同步返回（EasyBangumi init 有 5s 超时），不能做网络请求。
+// 因此首页固定一个"首页"标签，网络加载全部放到 getContent（有 50s 超时）。
+function getHomeSectionsCached() { return S_HOME != null ? S_HOME : []; }
+function getCatsCached() { return S_CATS != null ? S_CATS : []; }
+
+function PageComponent_getMainTabs() {
+    var res = new ArrayList();
+    var seen = {};
+    res.add(new MainTab("首页", MainTab.MAIN_TAB_WITH_COVER));
+    seen["首页"] = 1;
+    // 若已有缓存（之前加载过内容），再补充真实分区，纯读缓存不联网
+    var secs = getHomeSectionsCached();
+    for (var i = 0; i < secs.length; i++) {
+        var t = String(secs[i].title != null ? secs[i].title : ("分区" + (i + 1)));
+        if (!seen[t]) { seen[t] = 1; res.add(new MainTab(t, MainTab.MAIN_TAB_WITH_COVER)); }
+    }
+    var cats = getCatsCached();
+    for (var j = 0; j < cats.length; j++) {
+        var t2 = String(cats[j].title != null ? cats[j].title : "");
+        if (t2.length > 0 && !seen[t2]) { seen[t2] = 1; res.add(new MainTab(t2, MainTab.MAIN_TAB_WITH_COVER)); }
+    }
+    return res;
+}
+
+function PageComponent_getSubTabs(mainTab) { return new ArrayList(); }
+
+function PageComponent_getContent(mainTab, subTab, key) {
+    var list = new ArrayList();
+    var secs = getHomeSections();
+    if (mainTab.label == "首页") {
+        // 首页：展平所有分区的内容
+        for (var i = 0; i < secs.length; i++) {
+            var items = secs[i].items;
+            if (Array.isArray(items)) {
+                for (var k = 0; k < items.length; k++) { var c = makeCard(items[k]); if (c != null) list.add(c); }
+            }
+        }
+        // 部分源没有 homeSections（guazi/sanqiu/shuangxing），首页从分类补内容
+        if (list.size() == 0) {
+            var cats = getCats();
+            for (var j = 0; j < cats.length && list.size() < 50; j++) {
+                var catKey = String(cats[j].key != null ? cats[j].key : "");
+                if (catKey.length > 0 && typeof searchFiltered === "function") {
+                    var items = srcJson(searchFiltered, catKey, "{}", 1);
+                    if (Array.isArray(items)) {
+                        for (var k = 0; k < items.length && list.size() < 50; k++) { var c = makeCard(items[k]); if (c != null) list.add(c); }
+                    }
+                }
+            }
+        }
+        return new Pair(null, list);
+    }
+    // 分区 tab：找对应分区
+    for (var i = 0; i < secs.length; i++) {
+        var t = String(secs[i].title != null ? secs[i].title : ("分区" + (i + 1)));
+        if (t == mainTab.label) {
+            var items = secs[i].items;
+            if (Array.isArray(items)) {
+                for (var k = 0; k < items.length; k++) { var c = makeCard(items[k]); if (c != null) list.add(c); }
+            }
+            return new Pair(null, list);
+        }
+    }
+    // 分类 tab → searchFiltered（若存在）
+    var cats = getCats();
+    var catKey = null;
+    for (var j = 0; j < cats.length; j++) if (String(cats[j].title) == mainTab.label) { catKey = String(cats[j].key != null ? cats[j].key : ""); break; }
+    if (catKey != null && typeof searchFiltered === "function") {
+        var pg = key == null ? 1 : (key + 1);
+        var items = srcJson(searchFiltered, catKey, "{}", pg);
+        if (Array.isArray(items)) {
+            for (var k = 0; k < items.length; k++) { var c = makeCard(items[k]); if (c != null) list.add(c); }
+            return new Pair(items.length > 0 ? pg : null, list);
+        }
+    }
+    return new Pair(null, list);
+}
+
+// ---------- Search ----------
+function SearchComponent_search(page, keyword) {
+    var items = srcJson(search, keyword, page || 1);
+    var list = new ArrayList();
+    if (Array.isArray(items)) {
+        for (var i = 0; i < items.length; i++) { var c = makeCard(items[i]); if (c != null) list.add(c); }
+    }
+    return new Pair(list.size() > 0 ? (page + 1) : null, list);
+}
+
+// ---------- Detail ----------
+function DetailedComponent_getDetailed(summary) {
+    var d = srcJson(detail, summary.id);
+    if (d == null) d = {};
+    var info = d.video_play_info || d;
+    var name = String(info.name != null ? info.name : (info.vod_name != null ? info.vod_name : (info.title != null ? info.title : "")));
+    var pic = String(info.pic != null ? info.pic : (info.cover != null ? info.cover : (info.vod_pic != null ? info.vod_pic : "")));
+    var desc = String(info.desc != null ? info.desc : (info.description != null ? info.description : (info.vod_blurb != null ? info.vod_blurb : "")));
+    var cartoon = makeCartoon({
+        id: summary.id,
+        source: source.key,
+        url: summary.id,
+        title: name,
+        cover: pic,
+        intro: desc,
+        description: desc,
+        genre: "",
+        status: Cartoon.STATUS_UNKNOWN,
+        updateStrategy: Cartoon.UPDATE_STRATEGY_ALWAYS
+    });
+    var playLines = new ArrayList();
+    var eps = d.episodes;
+    if (Array.isArray(eps) && eps.length > 0) {
+        var es = new ArrayList();
+        for (var i = 0; i < eps.length; i++) {
+            var e = eps[i] || {};
+            var flag = String(e.url != null ? e.url : (e.vid != null ? e.vid : ""));
+            if (flag.length == 0) continue;
+            var ename = String(e.name != null ? e.name : ("第" + (i + 1) + "集"));
+            es.add(new Episode(flag, ename, i));
+        }
+        if (es.size() > 0) playLines.add(new PlayLine("1", "在线播放", es));
+    }
+    return new Pair(cartoon, playLines);
+}
+
+// ---------- Play ----------
+function PlayComponent_getPlayInfo(summary, playLine, episode) {
+    var r = srcJson(play, episode.id);
+    if (r == null) throw new ParserException("play parse failed");
+    var url = String(r.url || "");
+    if (url.length == 0) throw new ParserException("empty play url");
+    var type = (String(r.type).toLowerCase() == "m3u8" || url.indexOf(".m3u8") > 0)
+        ? PlayerInfo.DECODE_TYPE_HLS : PlayerInfo.DECODE_TYPE_OTHER;
+    var info = new PlayerInfo(type, url);
+    var hm = {};
+    var hdrs = r.headers;
+    if (hdrs) {
+        if (typeof hdrs === "string") { try { hdrs = parseJson(hdrs) || {}; } catch (e) { hdrs = {}; } }
+        if (hdrs && typeof hdrs === "object") for (var k in hdrs) if (hdrs.hasOwnProperty(k)) hm[k] = String(hdrs[k]);
+    }
+    // 兼容源里常见字段：userAgent / referer（guazi 的 CDN 防盗链、lmm85/dmbus 的 Referer）
+    if (r.userAgent && String(r.userAgent).length > 0 && !hm["User-Agent"]) hm["User-Agent"] = String(r.userAgent);
+    if (r.referer && String(r.referer).length > 0 && !hm["Referer"]) hm["Referer"] = String(r.referer);
+    if (Object.keys(hm).length > 0) {
+        var map = new HashMap();
+        for (var k2 in hm) if (hm.hasOwnProperty(k2)) map.put(k2, String(hm[k2]));
+        info.header = map;
+    }
+    return info;
+}
+
