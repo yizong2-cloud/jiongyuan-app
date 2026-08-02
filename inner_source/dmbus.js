@@ -724,11 +724,34 @@ function PreferenceComponent_getPreference() {
 function getHomeSectionsCached() { return S_HOME != null ? S_HOME : []; }
 function getCatsCached() { return S_CATS != null ? S_CATS : []; }
 
+// 每源同步兜底分类（getMainTabs 不能联网，用此表保证首页有分类标签；内容由 getContent 按分区/分类加载）
+var SOURCE_FALLBACK_TABS = {
+    "com.lanerc.lanerc":     ["热门", "日漫", "剧场版", "推荐"],
+    "com.lanerc.auvfun":     ["推荐", "日漫", "国漫", "4K"],
+    "com.lanerc.jinpai":     ["推荐", "全部"],
+    "com.lanerc.cycapp":     ["推荐", "TV动画", "剧场版", "4K专区", "国漫"],
+    "com.lanerc.guazi":      ["日番", "国漫", "欧美"],
+    "com.lanerc.shuangxing": ["推荐", "动漫", "剧场", "四月番剧", "七月新番"],
+    "com.lanerc.shutiao":    ["推荐", "动漫"],
+    "com.lanerc.yzx":        ["推荐", "全部"],
+    "com.lanerc.xifanacg":   ["推荐", "连载新番"],
+    "com.lanerc.sanqiu":     ["推荐", "全部"],
+    "com.lanerc.akianime":   ["推荐", "日漫", "国漫"],
+    "com.lanerc.lmm85":      ["推荐", "最近更新", "日本动漫", "国产动漫", "欧美动漫", "动态漫画", "动画电影", "热门"],
+    "com.lanerc.gugu":       ["推荐", "番剧"],
+    "com.lanerc.dmbus":      ["国漫", "日漫", "欧美", "电影"]
+};
+
 function PageComponent_getMainTabs() {
     var res = new ArrayList();
     var seen = {};
     res.add(new MainTab("首页", MainTab.MAIN_TAB_WITH_COVER));
     seen["首页"] = 1;
+    // 同步兜底分类（不联网，保证首次进入就有分类标签）
+    var fb = SOURCE_FALLBACK_TABS[source.key] || [];
+    for (var i = 0; i < fb.length; i++) {
+        if (!seen[fb[i]]) { seen[fb[i]] = 1; res.add(new MainTab(fb[i], MainTab.MAIN_TAB_WITH_COVER)); }
+    }
     // 若已有缓存（之前加载过内容），再补充真实分区，纯读缓存不联网
     var secs = getHomeSectionsCached();
     for (var i = 0; i < secs.length; i++) {
@@ -845,7 +868,7 @@ function DetailedComponent_getDetailed(summary) {
 
 // ---------- Play ----------
 function PlayComponent_getPlayInfo(summary, playLine, episode) {
-    var r = srcJson(play, episode.id);
+    var r = srcJson(play, String(episode.id));  // episode.id 是 Kotlin 实体属性(Java String)，必须转 JS 字符串
     if (r == null) throw new ParserException("play parse failed");
     var url = String(r.url || "");
     if (url.length == 0) throw new ParserException("empty play url");
