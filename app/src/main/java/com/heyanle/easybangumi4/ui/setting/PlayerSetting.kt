@@ -98,21 +98,25 @@ fun ColumnScope.PlayerSetting(
             preference = settingPreferences.anime4kEnabled
         )
 
+        val anime4kMode by settingPreferences.anime4kMode.flow()
+            .collectAsState(settingPreferences.anime4kMode.get())
         StringSelectPreferenceItem(
             title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_mode)) },
             textList = com.heyanle.easybangumi4.anime4k.A4KChain.MODE_NAMES,
-            select = settingPreferences.anime4kMode.get().coerceIn(0, com.heyanle.easybangumi4.anime4k.A4KChain.MODE_NAMES.lastIndex),
+            select = anime4kMode.coerceIn(0, com.heyanle.easybangumi4.anime4k.A4KChain.MODE_NAMES.lastIndex),
         ) {
             settingPreferences.anime4kMode.set(it)
         }
 
+        val anime4kScale by settingPreferences.anime4kScale.flow()
+            .collectAsState(settingPreferences.anime4kScale.get())
         StringSelectPreferenceItem(
             title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_scale)) },
             textList = listOf(
                 stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_scale_auto),
                 "1x", "2x", "4x",
             ),
-            select = when (settingPreferences.anime4kScale.get()) {
+            select = when (anime4kScale) {
                 1 -> 1
                 2 -> 2
                 4 -> 3
@@ -122,6 +126,8 @@ fun ColumnScope.PlayerSetting(
             settingPreferences.anime4kScale.set(listOf(0, 1, 2, 4)[it])
         }
 
+        val anime4kQuality by settingPreferences.anime4kQuality.flow()
+            .collectAsState(settingPreferences.anime4kQuality.get())
         StringSelectPreferenceItem(
             title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality)) },
             textList = listOf(
@@ -130,7 +136,7 @@ fun ColumnScope.PlayerSetting(
                 stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality_l),
             ),
             select = com.heyanle.easybangumi4.anime4k.A4KChain.QUALITIES
-                .indexOf(settingPreferences.anime4kQuality.get()).coerceAtLeast(0),
+                .indexOf(anime4kQuality).coerceAtLeast(0),
         ) {
             settingPreferences.anime4kQuality.set(com.heyanle.easybangumi4.anime4k.A4KChain.QUALITIES[it])
         }
