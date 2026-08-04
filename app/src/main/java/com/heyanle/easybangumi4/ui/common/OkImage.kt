@@ -33,7 +33,7 @@ import okhttp3.Headers
  */
 
 /**
- * 解析封面 URL 中的请求头后缀约定（囧次元 LANERC 源使用）：
+ * 解析封面 URL 中的请求头后缀约定（LANERC 源使用）：
  * `https://img.example.com/pic.webp@Referer=https://movie.douban.com/@User-Agent=Mozilla/5.0 ...`
  * 返回 (干净的图片 URL, 解析出的请求头)。
  * 兼容任意 @Key=Value 顺序与多个标记。

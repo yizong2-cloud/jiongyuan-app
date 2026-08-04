@@ -6,7 +6,7 @@ import android.util.Log
 /**
  * Anime4K shader 资产加载与链构建入口。
  *
- * 资产：app/src/main/assets/anime4k/ 下的 .glsl 文件 —— 与囧次元 APK 同源
+ * 资产：app/src/main/assets/anime4k/ 下的 .glsl 文件（Anime4K v4 官方发布版）
  * （Anime4K v4 hook 格式，MIT License，Copyright (c) 2019-2021 bloc97）。
  */
 object Anime4KSource {

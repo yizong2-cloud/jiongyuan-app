@@ -56,7 +56,7 @@ class SettingPreferences(
         preferenceStore.getBoolean("player_bottom_nav_padding", true)
 
     // 高清渲染 (Anime4K)
-    // 默认开启（对齐囧次元体验），可关闭；持久化于 MMKV
+    // 默认开启，可关闭；持久化于 MMKV
     var anime4kEnabled = preferenceStore.getBoolean("anime4k_enabled", true)
     // 渲染方案 0..6（见 A4KChain.MODE_NAMES）
     val anime4kMode = preferenceStore.getInt("anime4k_mode", 1)
