@@ -16,5 +16,3 @@
 .cxx
 local.properties
 app/keystore.jks
-.github/workflows/build.yml
-.github/workflows/
