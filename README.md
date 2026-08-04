@@ -29,7 +29,7 @@
 
 ## 下载安装包
 
-- **Releases 页面**（https://github.com/yizong-boop/jiongyuan-app/releases）提供签名 APK，
+- **Releases 页面**（https://github.com/yizong2-cloud/jiongyuan-app/releases）提供签名 APK，
   打 `v*` tag 自动构建发布。
 - 手机安装：下载 APK 后直接安装（需允许未知来源）。
 
