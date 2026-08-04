@@ -28,8 +28,10 @@ internal class Anime4KProgram(
     companion object {
         private const val TAG = "Anime4K"
 
-        /** 共享顶点着色器：位置 → v_uv 线性映射（与 Media3 DefaultShaderProgram 约定一致） */
-        const val VERTEX_SRC = """
+        /** 共享顶点着色器：位置 → v_uv 线性映射（与 Media3 DefaultShaderProgram 约定一致）。
+         * 注意必须 trimIndent：#version 必须在第一行（Adreno 强制），
+         * 三重引号字符串的缩进/前导空行会导致编译失败。 */
+        val VERTEX_SRC = """
             #version 300 es
             layout(location = 0) in vec2 aPosition;
             out vec2 v_uv;
@@ -37,7 +39,7 @@ internal class Anime4KProgram(
                 v_uv = aPosition * 0.5 + 0.5;
                 gl_Position = vec4(aPosition, 0.0, 1.0);
             }
-        """
+        """.trimIndent()
     }
 
     /** 绑定名（含 hook 目标；HOOKED 显式绑定保留原名，运行时解析为 hook 目标纹理） */

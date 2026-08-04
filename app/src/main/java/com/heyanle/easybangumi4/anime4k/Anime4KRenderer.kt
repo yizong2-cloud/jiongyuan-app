@@ -13,8 +13,8 @@ import java.nio.FloatBuffer
  * - [configure] 在 GL 线程执行链模拟（WHEN 过滤 + 尺寸推导），输出尺寸 =
  *   链最终 pass 的输出（缩放策略见 [A4KChain.scaleFor]，WHEN 的 OUTPUT 引用 =
  *   输入 × scale，等价 mpv 的窗口尺寸语义）；
- * - 中间纹理全部为自建 FBO（16F 优先，fallback 8bit），带活跃引用回收
- *   （与 mpv 一致，避免 4x 链的显存爆炸）；
+ * - 中间纹理全部为自建 FBO（16F 优先，fallback 8bit），跨帧复用，
+ *   仅在 configure 重建 / releaseGl 销毁；
  * - 最后一个 pass 渲染进 Media3 输出池纹理（BaseGlShaderProgram 约定）。
  *
  * 所有方法都在 GL 线程调用（Media3 管线保证）。
@@ -23,6 +23,7 @@ import java.nio.FloatBuffer
 internal class Anime4KRenderer(
     useHighPrecision: Boolean,
     private val passes: List<A4KPass>,
+    private val displayWidth: Int,
 ) : BaseGlShaderProgram(useHighPrecision, /* texturePoolCapacity = */ 1) {
 
     companion object {
@@ -72,8 +73,6 @@ vec4 hook() {
         val infos: List<PassInfo>,
         val outW: Int,
         val outH: Int,
-        /** active 索引 → 该 pass 结束后应删除其 FBO 的 active 索引列表 */
-        val deleteAfter: Map<Int, List<Int>>,
         val lastActive: Int,
     )
 
@@ -94,7 +93,7 @@ vec4 hook() {
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         inputW = inputWidth
         inputH = inputHeight
-        val scale = A4KChain.scaleFor(inputHeight)
+        val scale = A4KChain.scaleFor(inputWidth, displayWidth)
         // WHEN 的 OUTPUT 引用 = 目标输出尺寸（等价 mpv 窗口尺寸）
         val outputRef = Pair(inputWidth * scale, inputHeight * scale)
         val result = simulate(passes, inputWidth, inputHeight, outputRef)
@@ -122,7 +121,7 @@ vec4 hook() {
         return Size(outputW, outputH)
     }
 
-    // ---------- 链模拟（尺寸 / WHEN / 绑定 / 活跃回收） ----------
+    // ---------- 链模拟（尺寸 / WHEN / 绑定） ----------
 
     private fun simulate(
         passList: List<A4KPass>,
@@ -131,15 +130,10 @@ vec4 hook() {
         outputRef: Pair<Int, Int>,
     ): SimResult {
         val nsSize = HashMap<String, Pair<Int, Int>>()
-        val nsGen = HashMap<String, Int>()
         nsSize["NATIVE"] = inW to inH
-        nsGen["NATIVE"] = -1
         nsSize["MAIN"] = inW to inH
-        nsGen["MAIN"] = -1
 
         val infos = ArrayList<PassInfo>()
-        val lastUse = HashMap<Int, Int>() // gen → 最后一次被绑定的 active 索引（-1 = 从未）
-        var genCounter = 0
 
         for (p in passList) {
             val sizeOf: (String) -> Pair<Float, Float>? = { name ->
@@ -175,8 +169,8 @@ vec4 hook() {
                 }
                 h = v.toInt().coerceAtLeast(1)
             }
-            // 绑定解析（HOOKED → hook 目标；hook 目标隐式绑定）
-            val activeIdx = infos.size
+            // 绑定解析（HOOKED → hook 目标；hook 目标隐式绑定；
+            // 阶段名如 PREKERNEL 在运行时解析为当前 MAIN 纹理，同一规则见 drawFrame）
             val binds = ArrayList<Triple<String, Int, Int>>()
             val bindNames = LinkedHashSet<String>()
             bindNames.add(p.hookTarget)
@@ -194,18 +188,12 @@ vec4 hook() {
                     break
                 }
                 binds.add(Triple(name, sz.first, sz.second))
-                val g = nsGen[name] ?: -1
-                lastUse[g] = maxOf(lastUse[g] ?: -1, activeIdx)
             }
             if (!valid) continue
-            // 绑定全部有效后才分配 gen（= 本 pass 输出纹理的代）
-            val gen = genCounter++
             infos.add(PassInfo(p, binds, w, h))
-            // 更新命名空间（新纹理代）
+            // 更新命名空间（新纹理代；FBO 跨帧复用，纹理内容每帧被完整重写）
             val save = p.effectiveSave
             nsSize[save] = w to h
-            nsGen[save] = gen
-            lastUse[gen] = lastUse[gen] ?: activeIdx // 输出从未被绑定 → 创建即最后使用
         }
 
         val lastActive = infos.size - 1
@@ -214,17 +202,7 @@ vec4 hook() {
             li.outW to li.outH
         } else inW to inH
 
-        // 活跃回收表：active 索引 k 结束后删除 lastUse==k 的中间 FBO
-        // （gen 按 active 索引顺序分配，gen==activeIdx；被最后一个 pass 绑定的不删，
-        //   随 releaseGl 统一清理）
-        val deleteAfter = HashMap<Int, MutableList<Int>>()
-        for (p in 0 until lastActive) {
-            val lu = lastUse[p] ?: -1
-            if (lu >= 0 && lu != lastActive) {
-                deleteAfter.getOrPut(lu) { ArrayList() }.add(p)
-            }
-        }
-        return SimResult(infos, final.first, final.second, deleteAfter, lastActive)
+        return SimResult(infos, final.first, final.second, lastActive)
     }
 
     // ---------- Media3 GlShaderProgram 契约 ----------
@@ -232,7 +210,11 @@ vec4 hook() {
     // 注意：TexturePool 为包私有，无法在外部包访问，故输出 FBO 在 drawFrame 内
     // 通过 GL_FRAMEBUFFER_BINDING 读取（基类调用 drawFrame 前恰好聚焦输出纹理）。
 
+    private var frameCount = 0
+    private var frameTimeSum = 0L
+
     override fun drawFrame(inputTexId: Int, presentationTimeUs: Long) {
+        val t0 = System.nanoTime()
         try {
             val result = sim ?: return
             if (result.infos.isEmpty()) return
@@ -257,7 +239,11 @@ vec4 hook() {
                     outW = outputW
                     outH = outputH
                 } else {
-                    val fbo = fbos[i] ?: continue
+                    val fbo = fbos[i]
+                    if (fbo == null) {
+                        Log.e(TAG, "Anime4K FBO missing for pass#$i (${info.pass.desc}) — 中间 FBO 生命周期错误")
+                        continue
+                    }
                     outFbo = fbo.fboId
                     outTex = fbo.texId
                     outW = fbo.w
@@ -283,18 +269,21 @@ vec4 hook() {
                 if (!isLast && outTex != 0) {
                     texIds[info.pass.effectiveSave] = outTex
                 }
-                // 活跃回收
-                result.deleteAfter[i]?.let { list ->
-                    for (gi in list) {
-                        val fbo = fbos.remove(gi) ?: continue
-                        GLES30.glDeleteFramebuffers(1, intArrayOf(fbo.fboId), 0)
-                        GLES30.glDeleteTextures(1, intArrayOf(fbo.texId), 0)
-                    }
-                }
+                // 注意：中间 FBO 生命周期 = 渲染器生命周期，跨帧复用，不在帧内删除
+                // （曾经按 lastUse 逐帧回收，但 FBO 只在 configure 创建一次，删除后
+                //   下一帧 `fbos[i] ?: continue` 直接跳过 pass —— 跨帧必然失效，
+                //   表现为第一帧正常、第二帧起 STATSMAX=0 导致色调异常）
             }
         } catch (e: Exception) {
             Log.e(TAG, "Anime4K drawFrame failed", e)
             onError(e)
+        } finally {
+            frameCount++
+            frameTimeSum += System.nanoTime() - t0
+            if (frameCount % 30 == 0) {
+                val avgMs = frameTimeSum / frameCount / 1_000_000.0
+                Log.d(TAG, "drawFrame avg=${"%.1f".format(avgMs)}ms frames=$frameCount (≈${"%.1f".format(1000.0 / avgMs)}fps)")
+            }
         }
     }
 

@@ -120,15 +120,17 @@ object A4KChain {
 
     /**
      * 缩放策略（WHEN 的 OUTPUT 依据，等价于 mpv 的窗口尺寸）：
-     *   inH < 720  → 4x（输出 ≤ 4K）
-     *   720 ≤ inH ≤ 1080 → 2x（输出 ≤ 2K）
-     *   inH > 1080 → 1x（仅恢复/去环，不放大）
-     * 输出 = 输入 × scale。链内各 x2 pass 的 //!WHEN 会据此自动决定是否运行。
+     * 输出目标 = 屏幕显示尺寸。scale = 使「视频宽 × scale ≥ 屏宽」的最小 2 的幂（1/2/4）。
+     * 例：1080p 视频在 1080 宽的手机 → 1x（屏上本就显示不下原生分辨率，放大无意义且白耗算力）；
+     *     480p 视频在 1080 宽的手机 → 2x（原生放不下，放大到 2x 后由呈现层缩放到屏宽）。
+     * 链内各 x2 pass 的 //!WHEN 会据此自动决定是否运行。
      */
-    fun scaleFor(inputHeight: Int): Int {
+    fun scaleFor(inputWidth: Int, displayWidth: Int): Int {
+        if (displayWidth <= 0) return 1
+        val ratio = displayWidth.toFloat() / inputWidth
         return when {
-            inputHeight < 720 -> 4
-            inputHeight <= 1080 -> 2
+            ratio >= 2.4f -> 4
+            ratio >= 1.2f -> 2
             else -> 1
         }
     }
