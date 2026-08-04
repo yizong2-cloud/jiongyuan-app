@@ -130,14 +130,13 @@ internal class Anime4KProgram(
         var body = pass.body
         // Adreno GLSL ES 编译器：vec2(<非常量整数表达式>, ...) 构造产生垃圾坐标（运行时 0），
         // 且拒绝 float 与 const int 的混合运算/比较。
-        // 1) 循环变量改 float；
-        // 2) 循环条件 `i<X` / 运算 `i - X`（X 为大写宏常量）统一转 float；
-        // 3) vec2 构造中的整数 0 字面量转 0.0（混合类型构造同样不可靠）。
+        // 变换顺序必须：先做 vec2 整数字面量转换（此时参数里还没有 float() 括号，
+        // 正则能完整匹配），最后再套 float()（KERNELHALFSIZE / 循环条件）。
         body = Regex("for \\(int (\\w+)=0;").replace(body) { "for (float ${it.groupValues[1]}=0.0;" }
-        body = Regex("(\\w+)<([A-Z][A-Z_0-9]*)").replace(body) { "${it.groupValues[1]}<float(${it.groupValues[2]})" }
-        body = Regex("(\\w+) - KERNELHALFSIZE").replace(body) { "${it.groupValues[1]} - float(KERNELHALFSIZE)" }
         body = Regex("vec2\\(([^,)]*), 0\\)").replace(body) { "vec2(${it.groupValues[1]}, 0.0)" }
         body = Regex("vec2\\(0, ([^,)]*)\\)").replace(body) { "vec2(0.0, ${it.groupValues[1]})" }
+        body = Regex("(\\w+)<([A-Z][A-Z_0-9]*)").replace(body) { "${it.groupValues[1]}<float(${it.groupValues[2]})" }
+        body = Regex("(\\w+) - KERNELHALFSIZE").replace(body) { "${it.groupValues[1]} - float(KERNELHALFSIZE)" }
         sb.append(body)
         if (!body.endsWith("\n")) sb.append("\n")
         sb.append("void main() { out_color = hook(); }\n")
