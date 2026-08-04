@@ -15,11 +15,12 @@ import androidx.media3.effect.GlShaderProgram
 @OptIn(UnstableApi::class)
 class Anime4KEffect(
     private val passes: List<A4KPass>,
+    private val scaleOverride: Int = 0,
 ) : GlEffect {
 
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
         // 实时读屏宽：旋转（竖屏/横屏）后倍率能随显示宽度更新
-        return Anime4KRenderer(useHdr, passes) { context.resources.displayMetrics.widthPixels }
+        return Anime4KRenderer(useHdr, passes, { context.resources.displayMetrics.widthPixels }, scaleOverride)
     }
 
     override fun isNoOp(inputWidth: Int, inputHeight: Int): Boolean {

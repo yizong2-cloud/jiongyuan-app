@@ -125,7 +125,9 @@ object A4KChain {
      *     480p 视频在 1080 宽的手机 → 2x（原生放不下，放大到 2x 后由呈现层缩放到屏宽）。
      * 链内各 x2 pass 的 //!WHEN 会据此自动决定是否运行。
      */
-    fun scaleFor(inputWidth: Int, displayWidth: Int): Int {
+    fun scaleFor(inputWidth: Int, displayWidth: Int, manualScale: Int = 0): Int {
+        // 手动倍率（1/2/4）优先；0 = 自动（按屏幕宽度决定）
+        if (manualScale > 0) return manualScale
         if (displayWidth <= 0) return 1
         val ratio = displayWidth.toFloat() / inputWidth
         return when {

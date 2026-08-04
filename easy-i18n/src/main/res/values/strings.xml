@@ -61,6 +61,8 @@
     <string name="anime4k_quality_s">快速</string>
     <string name="anime4k_quality_m">标准</string>
     <string name="anime4k_quality_l">高画质</string>
+    <string name="anime4k_scale">超分倍率</string>
+    <string name="anime4k_scale_auto">自动（推荐）</string>
 
     <string name="double_tap_fast">双击快进快退</string>
     <string name="fast_time">快进快退时间（秒）</string>

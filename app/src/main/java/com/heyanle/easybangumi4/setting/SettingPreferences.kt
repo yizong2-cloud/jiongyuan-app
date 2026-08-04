@@ -62,6 +62,8 @@ class SettingPreferences(
     val anime4kMode = preferenceStore.getInt("anime4k_mode", 1)
     // 渲染质量 S/M/L
     val anime4kQuality = preferenceStore.getString("anime4k_quality", "M")
+    // 超分倍率：0=自动(推荐)，1/2/4=强制
+    val anime4kScale = preferenceStore.getInt("anime4k_scale", 0)
 
     val cacheSizeSelection = listOf(
         0L to stringRes(com.heyanle.easy_i18n.R.string.disable),

@@ -448,14 +448,19 @@ fun CartoonPlay(
                 settingPreferences.anime4kEnabled.flow(),
                 settingPreferences.anime4kMode.flow(),
                 settingPreferences.anime4kQuality.flow(),
-            ) { on, mode, quality -> Triple(on, mode, quality) }
-                .collect { (on, mode, quality) ->
+                settingPreferences.anime4kScale.flow(),
+            ) { on, mode, quality, scale -> on to Triple(mode, quality, scale) }
+                .collect { (on, cfg) ->
+                    val mode = cfg.first
+                    val quality = cfg.second
+                    val scale = cfg.third
                     val effects: List<Effect> = if (on) {
                         listOf(
                             com.heyanle.easybangumi4.anime4k.Anime4KEffect(
                                 com.heyanle.easybangumi4.anime4k.Anime4KSource.chainFor(
                                     anime4kContext, mode, quality
-                                )
+                                ),
+                                scaleOverride = scale
                             )
                         )
                     } else {

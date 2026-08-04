@@ -107,6 +107,22 @@ fun ColumnScope.PlayerSetting(
         }
 
         StringSelectPreferenceItem(
+            title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_scale)) },
+            textList = listOf(
+                stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_scale_auto),
+                "1x", "2x", "4x",
+            ),
+            select = when (settingPreferences.anime4kScale.get()) {
+                1 -> 1
+                2 -> 2
+                4 -> 3
+                else -> 0
+            },
+        ) {
+            settingPreferences.anime4kScale.set(listOf(0, 1, 2, 4)[it])
+        }
+
+        StringSelectPreferenceItem(
             title = { Text(stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality)) },
             textList = listOf(
                 stringResource(id = com.heyanle.easy_i18n.R.string.anime4k_quality_s),
