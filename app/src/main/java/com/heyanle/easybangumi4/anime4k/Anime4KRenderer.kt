@@ -24,7 +24,7 @@ import java.nio.FloatBuffer
 internal class Anime4KRenderer(
     useHighPrecision: Boolean,
     private val passes: List<A4KPass>,
-    private val displayWidth: Int,
+    private val displayWidthProvider: () -> Int,
 ) : BaseGlShaderProgram(useHighPrecision, /* texturePoolCapacity = */ 1) {
 
     companion object {
@@ -94,7 +94,7 @@ vec4 hook() {
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         inputW = inputWidth
         inputH = inputHeight
-        val scale = A4KChain.scaleFor(inputWidth, displayWidth)
+        val scale = A4KChain.scaleFor(inputWidth, displayWidthProvider())
         // WHEN 的 OUTPUT 引用 = 目标输出尺寸（等价 mpv 窗口尺寸）
         val outputRef = Pair(inputWidth * scale, inputHeight * scale)
         val result = simulate(passes, inputWidth, inputHeight, outputRef)

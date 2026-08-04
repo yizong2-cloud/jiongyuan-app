@@ -18,8 +18,8 @@ class Anime4KEffect(
 ) : GlEffect {
 
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
-        val displayWidth = context.resources.displayMetrics.widthPixels
-        return Anime4KRenderer(useHdr, passes, displayWidth)
+        // 实时读屏宽：旋转（竖屏/横屏）后倍率能随显示宽度更新
+        return Anime4KRenderer(useHdr, passes) { context.resources.displayMetrics.widthPixels }
     }
 
     override fun isNoOp(inputWidth: Int, inputHeight: Int): Boolean {
