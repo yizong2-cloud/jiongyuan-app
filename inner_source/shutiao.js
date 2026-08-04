@@ -5,12 +5,12 @@
 // @libVersion 15
 // @cover https://img9.doubanio.com/view/photo/s_ratio_poster/public/p2932543896.webp
 //
-// 囧次元 囧源·薯条 内容源（EasyBangumi / 纯纯看番 扩展）
-// 逆向自 jiong-ciyuan.apk 内置脚本 shutiao.js，经 __JB 桥适配运行。免登录 / 免广告。
+// 囧源·薯条 内容源（EasyBangumi / 纯纯看番 扩展）
+// 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
 //
 var ext = {};
 // ============================================================
-//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
 // ============================================================
 var JB64 = Packages.android.util.Base64;
@@ -886,7 +886,7 @@ function resolveAnimeCategory() {
 }
 
 // converUrl 是一段 JSON 字符串，形如 {"class":"动作,喜剧","area":"日本,大陆","year":"2024,2023",...}。
-// 分隔符：线上实测各维度用「,」逗号分隔（如 class="情感,科幻,热血,…"），反编译 spec 记的是
+// 分隔符：线上实测各维度用「,」逗号分隔（如 class="情感,科幻,热血,…"），原 spec 记的是
 // 「|」(字节124)——两者取其一即可能出现，这里同时兼容 , 与 |（谁都不命中时整串当单选项）。
 function parseCategoryFilters(converUrl) {
     var cu = trim(converUrl);

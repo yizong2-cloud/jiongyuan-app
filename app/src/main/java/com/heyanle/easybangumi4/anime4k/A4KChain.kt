@@ -1,12 +1,12 @@
 package com.heyanle.easybangumi4.anime4k
 
 /**
- * 囧次元 (com.qsreod) Anime4K 链构建器。
+ * Anime4K 链构建器。
  *
- * 链结构逐条对照囧次元 APK 反编译结果（sources/IlooOOOOOOO/C0764IOOOOOOOOOO.java）：
+ * 链结构对照 Anime4K v4 官方推荐链：
  *  - 所有模式都以 Anime4K_Clamp_Highlights.glsl（去环）开头；
  *  - 7 个模式 = 不同 CNN 组合；质量 S/M/L 选择 Restore/Soft/Denoise/Upscale 的文件变体；
- *  - 链尾固定追加 Darken + Thin（反编译中两开关均硬编码 true）；
+ *  - 链尾固定追加 Darken + Thin（两开关均固定开启）；
  *  - Deblur 文件名按 Anime4K v4 官方推荐链对应（Soft 系配 Deblur_Original，其余配 Deblur_DoG）；
  *  - Darken/Thin 变体映射：S→VeryFast，M→Fast，L→HQ。
  *

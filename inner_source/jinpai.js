@@ -5,12 +5,12 @@
 // @libVersion 15
 // @cover https://img9.doubanio.com/view/photo/s_ratio_poster/public/p2932543896.webp
 //
-// 囧次元 囧源·金牌 内容源（EasyBangumi / 纯纯看番 扩展）
-// 逆向自 jiong-ciyuan.apk 内置脚本 jinpai.js，经 __JB 桥适配运行。免登录 / 免广告。
+// 囧源·金牌 内容源（EasyBangumi / 纯纯看番 扩展）
+// 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
 //
 var ext = {};
 // ============================================================
-//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
 // ============================================================
 var JB64 = Packages.android.util.Base64;
@@ -334,7 +334,7 @@ var UA = {
  *     播放 /v2/video/episode/url?id=&nid=                     → data.list[]{resolutionName,resolution,url}（多档）
  *   - 选集 flag 编成 "id@nid"，play() 拆开再调播放接口。
  *   - 多清晰度：data.list 每项一档（蓝光/高清/标清…），play() 全量下发 res.resolutions=[{name,url,type}]
- *     供前台「清晰度切换」；默认起播最高档（与反编译取 data.list[0] 行为一致）。
+ *     供前台「清晰度切换」；默认起播最高档（与原始脚本取 data.list[0] 行为一致）。
  *   - 播放地址按源站要求带 Origin/Referer = 站点域名 + Chrome UA。
  */
 
@@ -591,7 +591,7 @@ function play(flag) {
     }
     if (!resolutions.length) return JSON.stringify(res);
 
-    // 默认起播最高档（排序后首位；与反编译取 data.list[0] 行为一致，蓝光在首位）
+    // 默认起播最高档（排序后首位；与原始脚本取 data.list[0] 行为一致，蓝光在首位）
     var best = resolutions[0];
     res.url = best.url;
     res.type = best.type;

@@ -2,7 +2,7 @@
 
 基于 [EasyBangumi / 纯纯看番](https://github.com/easybangumiorg/EasyBangumi) 的个人精简版 Fork。
 
-内置囧次元 LANERC 内容源，免登录、免广告、开箱即用。
+内置动漫内容源，免登录、免广告、开箱即用。
 
 ## 功能
 

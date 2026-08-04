@@ -5,12 +5,12 @@
 // @libVersion 15
 // @cover https://img9.doubanio.com/view/photo/s_ratio_poster/public/p2932543896.webp
 //
-// 囧次元 囧源·咕咕剧场 内容源（EasyBangumi / 纯纯看番 扩展）
-// 逆向自 jiong-ciyuan.apk 内置脚本 gugu.js，经 __JB 桥适配运行。免登录 / 免广告。
+// 囧源·咕咕剧场 内容源（EasyBangumi / 纯纯看番 扩展）
+// 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
 //
 var ext = {"url":"https://www.gugu3.com"};
 // ============================================================
-//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
 // ============================================================
 var JB64 = Packages.android.util.Base64;
@@ -317,7 +317,7 @@ var UA = {
 
 /*
  * 咕咕｜动漫（gugu） JS 源
- * 还原自 TVBox csp_AppGet（spider.jar 反编译：com.github.catvod.spider.AppGet）。
+ * 还原自 TVBox csp_AppGet（com.github.catvod.spider.AppGet）。
  * version: 1.0.0
  *
  * 协议要点（逐段对照 AppGet.java / merge.m.a 加解密 / merge.k.b·k.c HTTP）：

@@ -5,12 +5,12 @@
 // @libVersion 15
 // @cover https://img9.doubanio.com/view/photo/s_ratio_poster/public/p2932543896.webp
 //
-// 囧次元 囧源·LANERC 内容源（EasyBangumi / 纯纯看番 扩展）
-// 逆向自 jiong-ciyuan.apk 内置脚本 lanerc.js，经 __JB 桥适配运行。免登录 / 免广告。
+// 囧源·LANERC 内容源（EasyBangumi / 纯纯看番 扩展）
+// 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
 //
 var ext = {};
 // ============================================================
-//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
 // ============================================================
 var JB64 = Packages.android.util.Base64;
