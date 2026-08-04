@@ -33,8 +33,21 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease
 
-      - name: Upload APK
+      - name: Rename APK with version
+        run: |
+          cp app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/jiongyuan-${GITHUB_REF_NAME:-manual}.apk
+
+      # 打 tag 推送 → 自动创建 Release 下载页
+      - name: Publish Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/jiongyuan-*.apk
+
+      # 手动触发 → 仅存构建产物
+      - name: Upload APK as artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/jiongyuan-*.apk

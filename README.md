@@ -27,6 +27,12 @@
 - **签名**：`app/keystore.jks`（已 gitignore），storePassword/keyAlias/keyPassword
   默认 `jiongyuan2026` / `jiongyuan`，可用环境变量覆盖（见 `app/build.gradle.kts`）。
 
+## 下载安装包
+
+- **Releases 页面**（https://github.com/yizong-boop/jiongyuan-app/releases）提供签名 APK，
+  打 `v*` tag 自动构建发布。
+- 手机安装：下载 APK 后直接安装（需允许未知来源）。
+
 ## 构建
 
 ```bash
@@ -50,5 +56,5 @@ App 内置源随版本同步。
 ## 许可与署名
 
 基于 [EasyBangumi](https://github.com/easybangumiorg/EasyBangumi)（[Apache-2.0](LICENSE)）fork。
-保留原作者版权与许可；本 Fork 仅作个人学习/自用，请勿用于分发或商业用途。
+保留原作者版权与许可。
 内置 Anime4K shader 为 MIT License（Copyright (c) 2019-2021 bloc97）。
