@@ -13,7 +13,8 @@ import java.nio.FloatBuffer
  * - [configure] 在 GL 线程执行链模拟（WHEN 过滤 + 尺寸推导），输出尺寸 =
  *   链最终 pass 的输出（缩放策略见 [A4KChain.scaleFor]，WHEN 的 OUTPUT 引用 =
  *   输入 × scale，等价 mpv 的窗口尺寸语义）；
- * - 中间纹理全部为自建 FBO（16F 优先，fallback 8bit），跨帧复用，
+ * - 中间纹理全部为自建 RGBA8 FBO，跨帧复用，
+ *   避免部分移动 GPU 对浮点 FBO 报 complete、采样却恒为 0 的黑屏问题；
  *   仅在 configure 重建 / releaseGl 销毁；
  * - 最后一个 pass 渲染进 Media3 输出池纹理（BaseGlShaderProgram 约定）。
  *
@@ -324,27 +325,23 @@ vec4 hook() {
     }
 
     private fun createFbo(w: Int, h: Int): Fbo {
-        var texId = createTexture(w, h, true)
-        var fboId = createFboForTexture(texId)
-        if (glCheckComplete(fboId)) return Fbo(texId, fboId, w, h)
-        // 16F 不可渲染 → fallback 8bit
-        GLES30.glDeleteFramebuffers(1, intArrayOf(fboId), 0)
-        GLES30.glDeleteTextures(1, intArrayOf(texId), 0)
-        Log.w(TAG, "Anime4K 16F FBO incomplete, fallback RGBA8 ($w x $h)")
-        texId = createTexture(w, h, false)
-        fboId = createFboForTexture(texId)
+        val texId = createTexture(w, h)
+        val fboId = createFboForTexture(texId)
+        if (!glCheckComplete(fboId)) {
+            Log.e(TAG, "Anime4K RGBA8 FBO incomplete ($w x $h)")
+        }
         return Fbo(texId, fboId, w, h)
     }
 
-    private fun createTexture(w: Int, h: Int, highPrecision: Boolean): Int {
+    private fun createTexture(w: Int, h: Int): Int {
         val ids = IntArray(1)
         GLES30.glGenTextures(1, ids, 0)
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, ids[0])
         GLES30.glTexImage2D(
             GLES30.GL_TEXTURE_2D, 0,
-            if (highPrecision) GLES30.GL_RGBA16F else GLES30.GL_RGBA8,
+            GLES30.GL_RGBA8,
             w, h, 0, GLES30.GL_RGBA,
-            if (highPrecision) GLES30.GL_HALF_FLOAT else GLES30.GL_UNSIGNED_BYTE,
+            GLES30.GL_UNSIGNED_BYTE,
             null,
         )
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
