@@ -7,10 +7,13 @@
 //
 // 囧源·LANERC 内容源（EasyBangumi / 纯纯看番 扩展）
 // 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
+// 2026-08-13：同步源站 V2 接口（app/v2/vod + app/v2/play，protobuf），
+// 源站已废弃老接口（app/getvod 返回占位「请升级到最新版本」）。
+// 主体脚本来源：https://js.z1i.cn/js/lanerc.js（囧次元 App 热更新分发）
 //
-var ext = { coverSuffix: true };
+var ext = { coverSuffix: true, guestCredential: { credential: 'g1.BAbHIK79q070zh8IpfRmALnjgHpX-QXUrICjSEIydZrCYCpPkLjUvLuAoOB7rhB8lNXn2j4LNXiWKv-thJOBAztm79cZ1WZj3yAn2b6HzOUTp7n8pRe0E_x23W0fyFu2N0yVFeNytJOFzDSZ5ah85P1aGUTApAInqiqd5z4MERhKMqTxXZK7Yq9lgktQlxd17RG0DQ0kL6aMhhDq3zY6bCw', expiresAt: 1786605794, origin: 'https://lol.jngaoke.cn' } };
 // ============================================================
-//  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
+//  __JB 桥 shim —— 把囧次元脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
 // ============================================================
 var JB64 = Packages.android.util.Base64;
@@ -315,50 +318,63 @@ var UA = {
     okhttp:  "okhttp/4.12.0"
 };
 
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 var _LANERC_DISCOVERY = 'https://anime999x-1366475786.cos.ap-guangzhou.myqcloud.com/apis.json';
-var _LANERC_FALLBACK_HOST = 'http://lol.jngaoke.cn/';
+var _LANERC_DISCOVERY_DOMAIN = 'uminainfo.cc';
+var _LANERC_DISCOVERY_PATH = 'api.json';
+var _LANERC_DOH_NAMES = ['dohx.lanerc.moe', 'doh.lanercdns1.cc', 'doh.uminadns2.cc'];
+var _LANERC_DOH_RESOLVERS = [
+    'https://doh.pub/',
+    'https://dns.alidns.com/',
+    'https://doh.360.cn/',
+    'https://1.12.12.12/',
+    'https://223.5.5.5/',
+    'https://dns.google/'
+];
+var _LANERC_DOH_DECRYPT_KEY = '2dd30ebfb8ed481a3317036eaf7ed3da';
+var _LANERC_HEALTH_SECRET = '4x2g5efd84fb46a9';
+var _LANERC_FALLBACK_HOST = 'https://lol.jngaoke.cn/';
+var _LANERC_DIRECT_IP = '123.6.149.136';
+var _LANERC_LEGACY_DIRECT_IP = '111.124.66.133';
+var _LANERC_DIRECT_HOST = 'lol.jngaoke.cn';
+var _LANERC_DIRECT_HOST_URL = 'http://' + _LANERC_DIRECT_IP + '/';
  
 var _LANERC_PROBE_TIMEOUT_MS = 3000;
- 
+
 var _LANERC_WARNING_PLAYLIST_TIMEOUT_MS = 3000;
+var _LANERC_BLOCK_WARNING_PLAYLIST = true;
+var _LANERC_BROWSE_ONLY = false;
 var _LANERC_STALE_HOST = 'https://server.jngaoke.cn/';
 var _LANERC_AUTH_FALLBACK = 'com.clggjv.xcjfmd.ffo';
 var _LANERC_DECRYPT_KEY = '8f81c2519e3b661834219e7142000093';
+var _LANERC_RUNTIME_CONFIG_PATH = 'app/config';
+var _LANERC_V2_DETAIL_PATH = 'app/v2/vod/';
+var _LANERC_V2_PLAY_PATH = 'app/v2/play';
+var _LANERC_GUEST_CAPTCHA_PATH = 'app/v2/guest/captcha';
+var _LANERC_GUEST_CREDENTIAL_PATH = 'app/v2/guest/credential';
+var _LANERC_GUEST_PLAY_PATH = 'app/v2/guest/play';
+var _LANERC_GUEST_CREDENTIAL_STORAGE_KEY = 'lanerc_guest_credential_v1';
+var _LANERC_PLAY_RESOLVE_KEY_HEX = '5a31fe3201838a69e8f9c135f7905db25208fbc6bc3f0a9b017fc5139a451108';
+var _LANERC_PLAY_RESOLVE_PATH = 'app/proxyx4x';
+var _LANERC_OFFICIAL_MEDIA_HOSTS = ['http://static.shangji.asia', 'https://file.shangji.asia'];
+var _LANERC_OFFICIAL_MEDIA_BUCKETS = ['10', '13', '2'];
+var _LANERC_LEGACY_MEDIA_BY_CONTENT = {
+    '688': ['416c3fbe42da2d20d70f28e7709bc8f6']
+};
+var _LANERC_PLAY_RESOLVER = 'auto';
  
 var _LANERC_BUILD_SIGNATURE = '74322D4D62B9F4A986DFA8973EE70EBC034E74551B8715C755EDD9ED18E6820B';
  
-var _LANERC_QUERY_SIGN_SECRET = '4x2g5efd84fb46a9'; // 2026-08 源站热更新（js.z1i.cn/js/lanerc.js）
+var _LANERC_QUERY_SIGN_SECRET = '4x2g5efd84fb46a9';
 
-
-var _LANERC_API_UA = 'Dart/3.9.2'; // 2026-08 源站热更新（js.z1i.cn/js/lanerc.js）
+var _LANERC_API_UA = 'Dart/3.9.2';
+var _LANERC_JSON_CONTENT_TYPE = 'application/json';
+var _LANERC_GUEST_JSON_UA = 'Dart/3.9 (dart:io)';
+var _LANERC_GUEST_JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 var _lanercExt = typeof ext === 'object' && ext ? ext : {};
 var _lanercHost = '';
 var _lanercHome = null;
+var _lanercDirectUsed = false;
 var _lanercRuntime = null;
 
 
@@ -395,16 +411,93 @@ function _lanercLog(message) {
 
 
 
+function _lanercBoolean(value, fallback) {
+    if (value === null || value === undefined || value === '') return fallback;
+    if (value === true || value === 1) return true;
+    if (value === false || value === 0) return false;
+    var normalized = String(value).toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+    return fallback;
+}
+
+
+
+function config() {
+    return JSON.stringify({
+        browseOnly: _lanercBoolean(_lanercExt.browseOnly, _LANERC_BROWSE_ONLY)
+    });
+}
+
+
+
 function _normalizeHost(host) {
     var value = _legacyTrim(host);
     if (!value) return '';
+    if (/^Ahttps?:\/\//i.test(value)) value = value.slice(1);
+    if (/^\/\//.test(value)) value = 'https:' + value;
+    else if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) value = 'https://' + value;
+    else if (/^http:\/\//i.test(value) && !_lanercAllowHttpFallback()) value = 'https://' + value.slice(7);
     return value.replace(/\/+$/, '') + '/';
+}
+
+function _isLegacyLanercIpHost(host) {
+    var value = _normalizeHost(host);
+    return /^https?:\/\/(?:123\.6\.149\.136|111\.124\.66\.133)(?:\/|$)/i.test(value);
+}
+
+
+
+function _lanercAllowHttpFallback() {
+    return _lanercBoolean(_lanercExt.allowHttpFallback, false) ||
+        String(_lanercExt.apiScheme || '').toLowerCase() === 'http';
+}
+
+
+function _lanercDirectIp() {
+    var supplied = _legacyTrim(_lanercExt.apiIp || _lanercExt.directIp || '');
+    if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(supplied)) return supplied;
+    return _LANERC_DIRECT_IP;
+}
+
+
+function _lanercDirectHostUrl() {
+    return 'http://' + _lanercDirectIp() + '/';
+}
+
+
+function _lanercIsDirectApiUrl(url) {
+    var value = String(url || '');
+    var candidates = [_lanercDirectIp(), _LANERC_DIRECT_IP, _LANERC_LEGACY_DIRECT_IP];
+    for (var index = 0; index < candidates.length; index += 1) {
+        if (candidates[index] && new RegExp('^https?://' + String(candidates[index]).replace(/\./g, '\\.') + '(?:/|$)', 'i').test(value)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+function _normalizeDiscoveredHost(host) {
+    var value = _legacyTrim(host)
+        .replace(/^['"]+|['"]+$/g, '')
+        .replace(/\\\//g, '/');
+    if (!value) return '';
+    if (/^Ahttps?:\/\//i.test(value)) value = value.slice(1);
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value) && !/^\/\//.test(value)) {
+        value = 'https://' + value;
+    }
+    var normalized = _normalizeHost(value);
+    if (!/^https?:\/\/[a-z0-9.-]+(?::\d+)?\/$/i.test(normalized)) return '';
+    return normalized;
 }
 
 
 
 function _isStaleLanercHost(host) {
-    return _normalizeHost(host).toLowerCase() === _LANERC_STALE_HOST;
+    var value = _normalizeHost(host).toLowerCase();
+    return /^https?:\/\/server\.jngaoke\.cn(?:\/|$)/i.test(value);
 }
 
 
@@ -553,6 +646,106 @@ var _LANERC_AES_FALLBACK = (function () {
         return state;
     }
 
+    function _aesMixColumns(state) {
+        for (var column = 0; column < 4; column += 1) {
+            var offset = column * 4;
+            var a = state[offset];
+            var b = state[offset + 1];
+            var c = state[offset + 2];
+            var d = state[offset + 3];
+            var a2 = _aesXtime(a), b2 = _aesXtime(b), c2 = _aesXtime(c), d2 = _aesXtime(d);
+            state[offset] = (a2 ^ (b2 ^ b) ^ c ^ d) & 0xff;
+            state[offset + 1] = (a ^ b2 ^ (c2 ^ c) ^ d) & 0xff;
+            state[offset + 2] = (a ^ b ^ c2 ^ (d2 ^ d)) & 0xff;
+            state[offset + 3] = ((a2 ^ a) ^ b ^ c ^ d2) & 0xff;
+        }
+    }
+
+    function _aesEncryptBlock(block, expanded) {
+        var rounds = 14;
+        var state = block.slice();
+        var index;
+        for (index = 0; index < 16; index += 1) state[index] ^= expanded[index];
+        for (var round = 1; round < rounds; round += 1) {
+            for (index = 0; index < 16; index += 1) state[index] = sbox[state[index]];
+            state = [
+                state[0], state[5], state[10], state[15],
+                state[4], state[9], state[14], state[3],
+                state[8], state[13], state[2], state[7],
+                state[12], state[1], state[6], state[11]
+            ];
+            _aesMixColumns(state);
+            for (index = 0; index < 16; index += 1) state[index] ^= expanded[round * 16 + index];
+        }
+        for (index = 0; index < 16; index += 1) state[index] = sbox[state[index]];
+        state = [
+            state[0], state[5], state[10], state[15],
+            state[4], state[9], state[14], state[3],
+            state[8], state[13], state[2], state[7],
+            state[12], state[1], state[6], state[11]
+        ];
+        for (index = 0; index < 16; index += 1) state[index] ^= expanded[rounds * 16 + index];
+        return state;
+    }
+
+    function _gcmXor(left, right) {
+        var result = [];
+        for (var index = 0; index < 16; index += 1) result[index] = left[index] ^ right[index];
+        return result;
+    }
+
+    function _gcmMultiply(left, right) {
+        var result = new Array(16).fill(0);
+        var value = right.slice();
+        for (var bitIndex = 0; bitIndex < 128; bitIndex += 1) {
+            if ((left[bitIndex >> 3] & (0x80 >> (bitIndex & 7))) !== 0) {
+                result = _gcmXor(result, value);
+            }
+            var lsb = value[15] & 1;
+            for (var byteIndex = 15; byteIndex > 0; byteIndex -= 1) {
+                value[byteIndex] = (value[byteIndex] >> 1) | ((value[byteIndex - 1] & 1) << 7);
+            }
+            value[0] = value[0] >> 1;
+            if (lsb) value[0] ^= 0xe1;
+        }
+        return result;
+    }
+
+    function _gcmHash(ciphertext, hashSubkey) {
+        var accumulator = new Array(16).fill(0);
+        for (var offset = 0; offset < ciphertext.length; offset += 16) {
+            var block = new Array(16).fill(0);
+            for (var index = 0; index < 16 && offset + index < ciphertext.length; index += 1) {
+                block[index] = ciphertext[offset + index];
+            }
+            accumulator = _gcmMultiply(_gcmXor(accumulator, block), hashSubkey);
+        }
+        var lengths = new Array(16).fill(0);
+        var bitLength = ciphertext.length * 8;
+        for (var bit = 0; bit < 8; bit += 1) {
+            lengths[15 - bit] = (bitLength / Math.pow(2, bit * 8)) & 0xff;
+        }
+        accumulator = _gcmMultiply(_gcmXor(accumulator, lengths), hashSubkey);
+        return accumulator;
+    }
+
+    function _gcmIncrement(counter) {
+        var next = counter.slice();
+        for (var index = 15; index >= 12; index -= 1) {
+            next[index] = (next[index] + 1) & 0xff;
+            if (next[index] !== 0) break;
+        }
+        return next;
+    }
+
+    function _aesHexBytes(value) {
+        var text = String(value || '').replace(/[^0-9a-f]/gi, '');
+        if (text.length % 2) text = '0' + text;
+        var result = [];
+        for (var index = 0; index < text.length; index += 2) result.push(parseInt(text.substr(index, 2), 16));
+        return result;
+    }
+
      
     function _aesTextBytes(value) {
         var result = [];
@@ -578,6 +771,23 @@ var _LANERC_AES_FALLBACK = (function () {
             output.push(((first << 2) | (second >> 4)) & 0xff);
             if (third !== -1) output.push((((second & 0x0f) << 4) | (third >> 2)) & 0xff);
             if (fourth !== -1) output.push((((third & 0x03) << 6) | fourth) & 0xff);
+        }
+        return output;
+    }
+
+    function _aesBase64Encode(bytes) {
+        var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        var output = '';
+        for (var index = 0; index < bytes.length; index += 3) {
+            var first = bytes[index] & 0xff;
+            var hasSecond = index + 1 < bytes.length;
+            var hasThird = index + 2 < bytes.length;
+            var second = hasSecond ? bytes[index + 1] & 0xff : 0;
+            var third = hasThird ? bytes[index + 2] & 0xff : 0;
+            output += alphabet.charAt(first >> 2);
+            output += alphabet.charAt(((first & 3) << 4) | (second >> 4));
+            output += hasSecond ? alphabet.charAt(((second & 15) << 2) | (third >> 6)) : '=';
+            output += hasThird ? alphabet.charAt(third & 63) : '=';
         }
         return output;
     }
@@ -625,6 +835,35 @@ var _LANERC_AES_FALLBACK = (function () {
                 if (plain[padIndex] !== padding) throw new Error('AES PKCS7 padding 不一致');
             }
             return _aesUtf8Text(plain, plain.length - padding);
+        },
+        decryptGcmBase64: function (ciphertextBase64, keyHex, ivBase64) {
+            var key = _aesHexBytes(keyHex);
+            var nonce = _aesBase64Bytes(ivBase64);
+            var input = _aesBase64Bytes(ciphertextBase64);
+            if (key.length !== 32 || nonce.length !== 12 || input.length < 16) {
+                throw new Error('AES-GCM 参数长度非法');
+            }
+            var ciphertext = input.slice(0, input.length - 16);
+            var tag = input.slice(input.length - 16);
+            var expanded = _aesExpandKey(key);
+            var zero = new Array(16).fill(0);
+            var hashSubkey = _aesEncryptBlock(zero, expanded);
+            var j0 = nonce.concat([0, 0, 0, 1]);
+            var expectedTag = _gcmXor(_aesEncryptBlock(j0, expanded), _gcmHash(ciphertext, hashSubkey));
+            var mismatch = 0;
+            for (var tagIndex = 0; tagIndex < 16; tagIndex += 1) mismatch |= expectedTag[tagIndex] ^ tag[tagIndex];
+            if (mismatch !== 0) throw new Error('AES-GCM authentication failed');
+            var plain = [];
+            var counter = _gcmIncrement(j0);
+            for (var offset = 0; offset < ciphertext.length; offset += 16) {
+                var stream = _aesEncryptBlock(counter, expanded);
+                var blockLength = Math.min(16, ciphertext.length - offset);
+                for (var blockIndex = 0; blockIndex < blockLength; blockIndex += 1) {
+                    plain.push(ciphertext[offset + blockIndex] ^ stream[blockIndex]);
+                }
+                counter = _gcmIncrement(counter);
+            }
+            return _aesBase64Encode(plain);
         }
     };
 })();
@@ -691,6 +930,37 @@ function _decryptApiData(ciphertext) {
 
 
 
+function _decryptLanercStandardBase64(ciphertext, keyText) {
+    var input = String(ciphertext || '').replace(/[\r\n\t ]/g, '');
+    while (input.length % 4) input += '=';
+    var key = String(keyText || '');
+    if (!input || !key) return '';
+    var nativeError = null;
+    if (typeof crypto !== 'undefined' && crypto.aes && typeof crypto.aes.decrypt === 'function') {
+        try {
+            var nativePlain = crypto.aes.decrypt(input, key, {
+                mode: 'ECB',
+                padding: 'PKCS5',
+                input: 'base64',
+                output: 'utf8'
+            });
+            if (nativePlain !== null && nativePlain !== undefined && String(nativePlain) !== '') {
+                return String(nativePlain);
+            }
+        } catch (error) {
+            nativeError = error;
+        }
+    }
+    try {
+        return String(_LANERC_AES_FALLBACK.decryptBase64(input, key) || '');
+    } catch (fallbackError) {
+        if (nativeError) _lanercLog('动态配置 AES 解密失败：' + String(nativeError));
+        return '';
+    }
+}
+
+
+
 function _decodeApiResponse(value) {
     var response = value;
     if (!response || typeof response !== 'object' || _legacyIsArray(response)) return response;
@@ -703,6 +973,21 @@ function _decodeApiResponse(value) {
 
 
 
+function _isUsableApiResponse(value) {
+    if (!value || typeof value !== 'object') return false;
+    if (_legacyIsArray(value)) return value.length > 0;
+    var code = value.code;
+    if (typeof code === 'string' && /^-?\d+$/.test(_legacyTrim(code))) code = Number(code);
+    if (typeof code === 'number' && (code < 0 || code >= 400)) return false;
+    var status = value.status;
+    if (typeof status === 'string' && /^-?\d+$/.test(_legacyTrim(status))) status = Number(status);
+    if (typeof status === 'number' && status >= 400) return false;
+    if (value.ok === false || value.error === true) return false;
+    return Object.keys(value).length > 0;
+}
+
+
+
 function _lanercApiUserAgent() {
     var candidate = _legacyTrim(_lanercExt.userAgent);
     return /^Dart\//i.test(candidate) ? candidate : _LANERC_API_UA;
@@ -710,36 +995,485 @@ function _lanercApiUserAgent() {
 
 
 
-function _requestOptions(isPost, timeoutMs) {
-    var headers = { Accept: 'application/json' };
-    headers['User-Agent'] = _lanercApiUserAgent();
-    if (isPost) headers['Content-Type'] = 'application/json';
-    var options = { headers: headers };
+function _requestOptions(isPost, timeoutMs, url, extraHeaders, profile) {
+    var guestJson = profile === 'guestJson';
+    var userAgent = guestJson ? _LANERC_GUEST_JSON_UA : _lanercApiUserAgent();
+    var headers = {
+        'user-agent': userAgent,
+        'content-type': guestJson ? _LANERC_GUEST_JSON_CONTENT_TYPE : _LANERC_JSON_CONTENT_TYPE,
+        'accept-encoding': 'gzip'
+    };
+    var requestUrl = String(url || '');
+    if (_lanercIsDirectApiUrl(requestUrl)) {
+        headers.host = _LANERC_DIRECT_HOST;
+    }
+    var supplied = extraHeaders && typeof extraHeaders === 'object' ? extraHeaders : {};
+    for (var suppliedName in supplied) {
+        if (_legacyOwn(supplied, suppliedName) && supplied[suppliedName] !== null && supplied[suppliedName] !== undefined) {
+            headers[String(suppliedName)] = String(supplied[suppliedName]);
+        }
+    }
+    var options = { headers: headers, ua: userAgent };
     var timeout = Number(timeoutMs || _lanercExt.timeout || 0);
     if (timeout > 0 && isFinite(timeout)) options.timeout = timeout;
     return JSON.stringify(options);
 }
 
 
+function _lanercBinaryBytes(value) {
+    if (value === null || value === undefined) return [];
+    if (typeof value === 'string') {
+        var textBytes = [];
+        for (var textIndex = 0; textIndex < value.length; textIndex += 1) {
+            textBytes.push(value.charCodeAt(textIndex) & 0xff);
+        }
+        return textBytes;
+    }
+    if (typeof value === 'object' && typeof value.length === 'number') {
+        var arrayBytes = [];
+        for (var arrayIndex = 0; arrayIndex < value.length; arrayIndex += 1) {
+            arrayBytes.push(Number(value[arrayIndex]) & 0xff);
+        }
+        return arrayBytes;
+    }
+    return [];
+}
 
-function _requestJson(url, timeoutMs) {
+
+function _lanercBytesToHex(bytes) {
+    var output = '';
+    for (var index = 0; index < bytes.length; index += 1) {
+        var value = Number(bytes[index]) & 0xff;
+        output += (value < 16 ? '0' : '') + value.toString(16);
+    }
+    return output;
+}
+
+
+function _lanercHexToBytes(value) {
+    var text = String(value || '').replace(/[^0-9a-f]/gi, '');
+    if (text.length % 2) text = '0' + text;
+    var output = [];
+    for (var index = 0; index < text.length; index += 2) output.push(parseInt(text.substr(index, 2), 16));
+    return output;
+}
+
+
+function _lanercBytesToBase64(bytes) {
+    var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    var output = '';
+    for (var index = 0; index < bytes.length; index += 3) {
+        var first = Number(bytes[index]) & 0xff;
+        var hasSecond = index + 1 < bytes.length;
+        var hasThird = index + 2 < bytes.length;
+        var second = hasSecond ? Number(bytes[index + 1]) & 0xff : 0;
+        var third = hasThird ? Number(bytes[index + 2]) & 0xff : 0;
+        output += alphabet.charAt(first >> 2);
+        output += alphabet.charAt(((first & 3) << 4) | (second >> 4));
+        output += hasSecond ? alphabet.charAt(((second & 15) << 2) | (third >> 6)) : '=';
+        output += hasThird ? alphabet.charAt(third & 63) : '=';
+    }
+    return output;
+}
+
+
+function _lanercBase64ToBytes(value) {
+    var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    var input = String(value || '').replace(/[^A-Za-z0-9+/=]/g, '');
+    var output = [];
+    for (var index = 0; index < input.length; index += 4) {
+        var first = alphabet.indexOf(input.charAt(index));
+        var second = alphabet.indexOf(input.charAt(index + 1));
+        if (first < 0 || second < 0) continue;
+        var thirdChar = input.charAt(index + 2);
+        var fourthChar = input.charAt(index + 3);
+        var third = thirdChar === '=' || thirdChar === '' ? -1 : alphabet.indexOf(thirdChar);
+        var fourth = fourthChar === '=' || fourthChar === '' ? -1 : alphabet.indexOf(fourthChar);
+        output.push(((first << 2) | (second >> 4)) & 0xff);
+        if (third >= 0) output.push((((second & 15) << 4) | (third >> 2)) & 0xff);
+        if (fourth >= 0) output.push((((third & 3) << 6) | fourth) & 0xff);
+    }
+    return output;
+}
+
+
+function _lanercUtf8Decode(bytes) {
+    var output = '';
+    var index = 0;
+    while (index < bytes.length) {
+        var first = Number(bytes[index++]) & 0xff;
+        if (first < 0x80) {
+            output += String.fromCharCode(first);
+        } else if (first < 0xe0 && index < bytes.length) {
+            output += String.fromCharCode(((first & 0x1f) << 6) | (bytes[index++] & 0x3f));
+        } else if (first < 0xf0 && index + 1 < bytes.length) {
+            output += String.fromCharCode(
+                ((first & 0x0f) << 12) | ((bytes[index++] & 0x3f) << 6) | (bytes[index++] & 0x3f)
+            );
+        } else if (index + 2 < bytes.length) {
+            var point = ((first & 7) << 18) | ((bytes[index++] & 0x3f) << 12) |
+                ((bytes[index++] & 0x3f) << 6) | (bytes[index++] & 0x3f);
+            point -= 0x10000;
+            output += String.fromCharCode(0xd800 + (point >> 10), 0xdc00 + (point & 0x3ff));
+        } else {
+            output += '\ufffd';
+        }
+    }
+    return output;
+}
+
+
+function _lanercProtoFields(value) {
+    var bytes = _lanercBinaryBytes(value);
+    var fields = {};
+    var offset = 0;
+    function readVarint() {
+        var result = 0;
+        var shift = 0;
+        while (offset < bytes.length && shift < 56) {
+            var current = bytes[offset++];
+            result += (current & 0x7f) * Math.pow(2, shift);
+            if ((current & 0x80) === 0) return result;
+            shift += 7;
+        }
+        throw new Error('protobuf varint 非法');
+    }
+    while (offset < bytes.length) {
+        var tag = readVarint();
+        var fieldNumber = Math.floor(tag / 8);
+        var wireType = tag & 7;
+        if (!fieldNumber) throw new Error('protobuf field number 非法');
+        var fieldValue;
+        if (wireType === 0) {
+            fieldValue = readVarint();
+        } else if (wireType === 1) {
+            if (offset + 8 > bytes.length) throw new Error('protobuf fixed64 截断');
+            fieldValue = bytes.slice(offset, offset + 8);
+            offset += 8;
+        } else if (wireType === 2) {
+            var length = readVarint();
+            if (length < 0 || offset + length > bytes.length) throw new Error('protobuf length 截断');
+            fieldValue = bytes.slice(offset, offset + length);
+            offset += length;
+        } else if (wireType === 5) {
+            if (offset + 4 > bytes.length) throw new Error('protobuf fixed32 截断');
+            fieldValue = bytes.slice(offset, offset + 4);
+            offset += 4;
+        } else {
+            throw new Error('protobuf wire type 不支持：' + wireType);
+        }
+        if (!fields[fieldNumber]) fields[fieldNumber] = [];
+        fields[fieldNumber].push({ wireType: wireType, value: fieldValue });
+    }
+    return fields;
+}
+
+
+function _lanercBinaryRequestOptions(url, timeoutMs) {
+    var options = _safeParse(_requestOptions(true, timeoutMs, url, {
+        accept: 'application/x-protobuf'
+    }), {});
+    options.charset = 'ISO-8859-1';
+    if (!options.headers) options.headers = {};
+    options.headers.accept = 'application/x-protobuf';
+    options.headers['content-type'] = _LANERC_JSON_CONTENT_TYPE;
+    return options;
+}
+
+
+function _postLanercProtobuf(url, body) {
+    var primaryUrl = String(url || '');
+    var payload = JSON.stringify(body || {});
+    var timeout = Number(_lanercExt.timeout || 12000);
+    var useHttpPost2 = typeof http !== 'undefined' && http && typeof http.post2 === 'function';
+    function usablePayload(value) {
+        if (_lanercBinaryBytes(value).length < 1) return false;
+        try {
+            return !!_playUrlFromProtobufResponse(value);
+        } catch (error) {
+            return false;
+        }
+    }
+    function send(target) {
+        var options = _lanercBinaryRequestOptions(target, timeout);
+        if (useHttpPost2) {
+            var response = http.post2(target, payload, JSON.stringify(options));
+            if (response && typeof response === 'object' && response.body !== undefined) {
+                var status = Number(response.status || 0);
+                if (status >= 400) return null;
+                return response.body;
+            }
+            return response;
+        }
+        if (typeof post !== 'function') return null;
+        return post(target, payload, JSON.stringify(options));
+    }
     try {
-        return _decodeApiResponse(_safeParse(request(url, _requestOptions(false, timeoutMs)), {}));
+        var primary = send(primaryUrl);
+        if (usablePayload(primary)) return primary;
+        if (_lanercBinaryBytes(primary).length > 0) {
+            _lanercLog('x4x 主节点返回非 protobuf 内容，准备尝试直连节点');
+        }
     } catch (error) {
-        _lanercLog('GET失败：' + url + '；' + String(error));
-        return {};
+        _lanercLog('x4x 主节点失败：' + primaryUrl + '；' + String(error));
+    }
+    var directUrl = _lanercAllowHttpFallback() ? _lanercDirectUrl(primaryUrl) : '';
+    if (directUrl && directUrl !== primaryUrl) {
+        try {
+            var direct = send(directUrl);
+            if (usablePayload(direct)) {
+                _lanercLog('x4x 自动切换直连节点：' + directUrl);
+                _lanercDirectUsed = true;
+                return direct;
+            }
+            if (_lanercBinaryBytes(direct).length > 0) {
+                _lanercLog('x4x 直连节点返回非 protobuf 内容');
+            }
+        } catch (directError) {
+            _lanercLog('x4x 直连节点失败：' + directUrl + '；' + String(directError));
+        }
+    }
+    return null;
+}
+
+
+function _postLanercV2Play(resourceId) {
+    return _postLanercProtobuf(_resolveHost() + _LANERC_V2_PLAY_PATH, {
+        resource_id: String(resourceId || '')
+    });
+}
+
+
+function guestCaptcha() {
+    try {
+        var response = _payload(_apiPost(_LANERC_GUEST_CAPTCHA_PATH, {}));
+        var challengeId = _legacyTrim(_firstValue(response, ['challenge_id', 'challengeId']));
+        var image = _legacyTrim(_firstValue(response, ['image', 'captcha', 'image_data', 'imageData']));
+        var optionCount = Math.floor(Number(_firstValue(response, ['option_count', 'optionCount']) || 0));
+        var expiresIn = Math.floor(Number(_firstValue(response, ['expires_in', 'expiresIn']) || 0));
+        if (!challengeId || !image || optionCount < 1 || optionCount > 12) {
+            return JSON.stringify({ ok: false, error: '验证码获取失败，请稍后重试' });
+        }
+        return JSON.stringify({
+            ok: true,
+            challengeId: challengeId,
+            image: image,
+            optionCount: optionCount,
+            expiresIn: expiresIn > 0 ? expiresIn : 180
+        });
+    } catch (error) {
+        return JSON.stringify({ ok: false, error: '验证码获取失败，请检查网络后重试' });
     }
 }
 
 
-
-function _postJson(url, body) {
+function guestBind(challengeId, selected) {
     try {
-        return _decodeApiResponse(_safeParse(post(url, JSON.stringify(body || {}), _requestOptions(true)), {}));
+        var challenge = _legacyTrim(challengeId);
+        var choice = Number(selected);
+        if (!challenge || !isFinite(choice) || Math.floor(choice) !== choice || choice < 1) {
+            return JSON.stringify({ ok: false, error: '请选择正确的图片序号' });
+        }
+        var response = _payload(_apiPost(_LANERC_GUEST_CREDENTIAL_PATH, {
+            challenge_id: challenge,
+            selected: String(choice)
+        }));
+        var credential = _legacyTrim(_firstValue(response, ['credential', 'guest_credential', 'guestCredential']));
+        var expiresAt = Math.floor(Number(_firstValue(response, ['expires_at', 'expiresAt']) || 0));
+        if (!credential) {
+            return JSON.stringify({ ok: false, error: '验证失败或验证码已过期，请换一张重试' });
+        }
+        if (typeof setItem !== 'function') {
+            return JSON.stringify({ ok: false, error: '当前客户端不支持保存设备凭证' });
+        }
+        setItem(_LANERC_GUEST_CREDENTIAL_STORAGE_KEY, JSON.stringify({
+            credential: credential,
+            expiresAt: expiresAt,
+            origin: _resolveHost()
+        }));
+        return JSON.stringify({ ok: true, expiresAt: expiresAt });
     } catch (error) {
-        _lanercLog('POST失败：' + url + '；' + String(error));
-        return {};
+        return JSON.stringify({ ok: false, error: '绑定失败，请换一张验证码重试' });
     }
+}
+
+
+function _lanercGuestCredentialRecord(flagData) {
+    var flag = flagData && typeof flagData === 'object' ? flagData : {};
+    var supplied = _firstValue(flag, ['guestCredential', 'guest_credential', 'guestCredentialRecord']);
+    var shouldPersist = supplied !== '';
+    if (supplied === '') {
+        supplied = _firstValue(_lanercExt, ['guestCredential', 'guest_credential', 'guestCredentialRecord']);
+        shouldPersist = supplied !== '';
+    }
+    if (supplied === '' && typeof getItem === 'function') {
+        try {
+            supplied = getItem(_LANERC_GUEST_CREDENTIAL_STORAGE_KEY, '') || '';
+        } catch (storageReadError) {
+            supplied = '';
+        }
+    }
+    if (typeof supplied === 'string') {
+        var decoded = _safeParse(supplied, null);
+        if (decoded && typeof decoded === 'object' && !_legacyIsArray(decoded)) supplied = decoded;
+    }
+    var record = supplied && typeof supplied === 'object' && !_legacyIsArray(supplied) ? supplied : {};
+    var credential = typeof supplied === 'string' ? _legacyTrim(supplied) : _legacyTrim(
+        _firstValue(record, ['credential', 'guestCredential', 'guest_credential'])
+    );
+    var expiresAt = Number(_firstValue(record, ['expiresAt', 'expires_at', 'expiry', 'expires']) || 0);
+    var originValue = _legacyTrim(_firstValue(record, ['origin', 'host']));
+    var origin = '';
+    if (originValue && /^https?:\/\/[a-z0-9.-]+(?::\d+)?\/?$/i.test(originValue)) {
+        origin = _normalizeHost(originValue);
+    }
+    var now = Math.floor(Number(timestamp()) / 1000);
+    var error = '';
+    if (credential && expiresAt > 0 && expiresAt <= now) {
+        error = '游客设备凭证已过期，请在自己的设备重新完成官方 App 游客验证';
+    }
+    if (shouldPersist && credential && !error && typeof setItem === 'function') {
+        try {
+            setItem(_LANERC_GUEST_CREDENTIAL_STORAGE_KEY, JSON.stringify({
+                credential: credential,
+                expiresAt: expiresAt,
+                origin: origin
+            }));
+        } catch (storageWriteError) {
+        }
+    }
+    return {
+        credential: credential,
+        expiresAt: expiresAt,
+        origin: origin,
+        error: error
+    };
+}
+
+
+function _postLanercGuestPlay(resourceId, record) {
+    var credential = record && record.credential ? String(record.credential) : '';
+    if (!credential) return null;
+    var host = record && record.origin ? record.origin : _resolveHost();
+    return _postLanercProtobuf(host + _LANERC_GUEST_PLAY_PATH, {
+        resource_id: String(resourceId || ''),
+        guest_credential: credential
+    });
+}
+
+
+function _decryptLanercPlayPayload(payload) {
+    var bytes = _lanercBinaryBytes(payload);
+    if (bytes.length < 12 + 16) throw new Error('x4x 密文长度非法：' + bytes.length);
+    var nonce = bytes.slice(0, 12);
+    var ciphertextAndTag = bytes.slice(12);
+    var ciphertextBase64 = _lanercBytesToBase64(ciphertextAndTag);
+    var nonceHex = _lanercBytesToHex(nonce);
+    var plainBase64 = '';
+    if (typeof crypto !== 'undefined' && crypto.aes && typeof crypto.aes.decrypt === 'function') {
+        try {
+            plainBase64 = crypto.aes.decrypt(ciphertextBase64, _LANERC_PLAY_RESOLVE_KEY_HEX, {
+                mode: 'GCM',
+                padding: 'NoPadding',
+                keyFormat: 'hex',
+                input: 'base64',
+                output: 'base64',
+                iv: nonceHex,
+                ivFormat: 'hex'
+            });
+        } catch (nativeCryptoError) {
+            _lanercLog('运行器 AES-GCM 失败，切换内置实现：' + String(nativeCryptoError));
+        }
+    }
+    if (!plainBase64) {
+        plainBase64 = _LANERC_AES_FALLBACK.decryptGcmBase64(
+            ciphertextBase64, _LANERC_PLAY_RESOLVE_KEY_HEX, _lanercBytesToBase64(nonce)
+        );
+    }
+    var plainBytes = _lanercBinaryBytes(plainBase64);
+    if (typeof plainBase64 === 'string') plainBytes = _lanercBase64ToBytes(plainBase64);
+    if (!plainBytes.length) throw new Error('x4x 明文为空');
+    return plainBytes;
+}
+
+
+function _playUrlFromProtobufResponse(response) {
+    var envelope = _lanercProtoFields(response);
+    var encryptedField = envelope[4] && envelope[4][0];
+    if (!encryptedField || encryptedField.wireType !== 2) return '';
+    var plain = _decryptLanercPlayPayload(encryptedField.value);
+    var resolved = _lanercProtoFields(plain);
+    var urlField = resolved[1] && resolved[1][0];
+    if (!urlField || urlField.wireType !== 2) return '';
+    return _normalizePlayText(_lanercUtf8Decode(urlField.value));
+}
+
+
+
+function _requestJson(url, timeoutMs) {
+    var primaryUrl = String(url || '');
+    try {
+        var primary = _decodeApiResponse(_safeParse(request(primaryUrl, _requestOptions(false, timeoutMs, primaryUrl)), {}));
+        if (_isUsableApiResponse(primary)) {
+            _lanercDirectUsed = false;
+            return primary;
+        }
+    } catch (error) {
+        _lanercLog('GET失败：' + primaryUrl + '；' + String(error));
+    }
+    var directUrl = _lanercAllowHttpFallback() ? _lanercDirectUrl(primaryUrl) : '';
+    if (directUrl && directUrl !== primaryUrl) {
+        try {
+            var direct = _decodeApiResponse(_safeParse(request(directUrl, _requestOptions(false, timeoutMs, directUrl)), {}));
+            if (_isUsableApiResponse(direct)) {
+                _lanercLog('GET 自动切换直连节点：' + directUrl);
+                _lanercDirectUsed = true;
+                return direct;
+            }
+        } catch (directError) {
+            _lanercLog('GET 直连节点失败：' + directUrl + '；' + String(directError));
+        }
+    }
+    return {};
+}
+
+
+
+function _postJson(url, body, profile) {
+    var primaryUrl = String(url || '');
+    var payload = JSON.stringify(body || {});
+    try {
+        var primary = _decodeApiResponse(_safeParse(post(primaryUrl, payload, _requestOptions(true, 0, primaryUrl, null, profile)), {}));
+        if (_isUsableApiResponse(primary)) {
+            _lanercDirectUsed = false;
+            return primary;
+        }
+    } catch (error) {
+        _lanercLog('POST失败：' + primaryUrl + '；' + String(error));
+    }
+    var directUrl = _lanercAllowHttpFallback() ? _lanercDirectUrl(primaryUrl) : '';
+    if (directUrl && directUrl !== primaryUrl) {
+        try {
+            var direct = _decodeApiResponse(_safeParse(post(directUrl, payload, _requestOptions(true, 0, directUrl, null, profile)), {}));
+            if (_isUsableApiResponse(direct)) {
+                _lanercLog('POST 自动切换直连节点：' + directUrl);
+                _lanercDirectUsed = true;
+                return direct;
+            }
+        } catch (directError) {
+            _lanercLog('POST 直连节点失败：' + directUrl + '；' + String(directError));
+        }
+    }
+    return {};
+}
+
+
+
+function _lanercDirectUrl(url) {
+    var value = String(url || '');
+    var hostPattern = new RegExp('^https?://' + _LANERC_DIRECT_HOST.replace(/\./g, '\\.') + '(?=/|$)', 'i');
+    if (!hostPattern.test(value)) return '';
+    return value.replace(hostPattern, _lanercDirectHostUrl().slice(0, -1));
 }
 
 
@@ -758,28 +1492,367 @@ function _findDeep(value, key, depth) {
 
 
 
+function _findDeepAny(value, keys) {
+    var names = _legacyIsArray(keys) ? keys : [];
+    for (var index = 0; index < names.length; index += 1) {
+        var found = _findDeep(value, String(names[index] || ''));
+        if (found !== '' && found !== null && found !== undefined) return found;
+    }
+    return '';
+}
+
+
+
+function _normalizePlayText(value) {
+    var text = _legacyTrim(value);
+    if (!text) return '';
+    text = text
+        .replace(/\\\//g, '/')
+        .replace(/\\u0026/gi, '&')
+        .replace(/&amp;/gi, '&');
+    if (/^https?%3a%2f%2f/i.test(text)) {
+        try { text = decodeUri(text); } catch (error) { }
+    }
+    if (/^\/\//.test(text)) text = 'https:' + text;
+    return text;
+}
+
+
+
+function _playUrlFromResponse(response) {
+    var source = response;
+    if (typeof source === 'string') {
+        var parsedSource = _safeParse(source, source);
+        if (parsedSource === source) return _normalizePlayText(source);
+        source = parsedSource;
+    }
+    for (var depth = 0; depth < 3 && source && typeof source === 'object'; depth += 1) {
+        if (typeof source.data !== 'string') break;
+        var decoded = _safeParse(source.data, null);
+        if (!decoded || typeof decoded !== 'object') break;
+        source = decoded;
+    }
+    var value = _findDeepAny(source, [
+        'play_url', 'playUrl', 'playurl', 'video_url', 'videoUrl',
+        'm3u8_url', 'm3u8Url', 'url', 'src'
+    ]);
+    if (value && typeof value === 'object') {
+        value = _findDeepAny(value, ['url', 'play_url', 'playUrl', 'src', 'value']);
+    }
+    return _normalizePlayText(value);
+}
+
+
+
+function _playHeadersFromResponse(response) {
+    var source = response;
+    if (typeof source === 'string') source = _safeParse(source, source);
+    for (var depth = 0; depth < 3 && source && typeof source === 'object'; depth += 1) {
+        if (typeof source.data !== 'string') break;
+        var decoded = _safeParse(source.data, null);
+        if (!decoded || typeof decoded !== 'object') break;
+        source = decoded;
+    }
+    var value = _findDeepAny(source, [
+        'play_header', 'playHeader', 'play_headers', 'playHeaders',
+        'http_headers', 'httpHeaders', 'headers'
+    ]);
+    if (typeof value === 'string') value = _safeParse(value, null);
+    if (!value || typeof value !== 'object' || _legacyIsArray(value)) return {};
+    var result = {};
+    for (var key in value) {
+        if (_legacyOwn(value, key) && value[key] !== null && value[key] !== undefined) {
+            result[String(key)] = String(value[key]);
+        }
+    }
+    return result;
+}
+
+
+
+function _playResult(response, playUrl) {
+    var result = { url: playUrl, type: _mediaType(playUrl) };
+    var headers = _playHeadersFromResponse(response);
+    var source = response;
+    if (typeof source === 'string') source = _safeParse(source, source);
+    if (result.type === 'auto') {
+        var responseType = String(_findDeepAny(source, ['type', 'format', 'mime', 'mime_type']) || '').toLowerCase();
+        if (responseType.indexOf('m3u8') !== -1 || responseType.indexOf('hls') !== -1) result.type = 'm3u8';
+        else if (responseType.indexOf('mp4') !== -1) result.type = 'mp4';
+    }
+    var referer = _normalizePlayText(_findDeepAny(source, ['referer', 'referrer']));
+    var userAgent = _normalizePlayText(_findDeepAny(source, ['user_agent', 'userAgent', 'ua']));
+
+    if (Object.keys(headers).length) result.headers = headers;
+    if (referer) result.referer = referer;
+    if (userAgent) result.userAgent = userAgent;
+    return result;
+}
+
+
+
+function _lanercStringList(value, fallback) {
+    var source = value;
+    if (typeof source === 'string') {
+        var parsed = _safeParse(source, null);
+        if (_legacyIsArray(parsed)) source = parsed;
+        else source = String(source).split(',');
+    }
+    if (!_legacyIsArray(source)) source = fallback || [];
+    var result = [];
+    for (var index = 0; index < source.length; index += 1) {
+        var item = _legacyTrim(source[index]);
+        if (item) result.push(item);
+    }
+    return result;
+}
+
+
+
+function _lanercDiscoveryMode() {
+    var mode = _legacyTrim(_lanercExt.discoveryMode).toLowerCase();
+    if (mode === 'dynamic' || mode === 'fixed' || mode === 'auto') return mode;
+    if (_lanercExt.dynamicDiscovery !== null && _lanercExt.dynamicDiscovery !== undefined &&
+        _lanercExt.dynamicDiscovery !== '') {
+        return _lanercBoolean(_lanercExt.dynamicDiscovery, true) ? 'dynamic' : 'fixed';
+    }
+    return 'auto';
+}
+
+
+
+function _lanercRandomToken(length) {
+    var fixed = _legacyTrim(_lanercExt.discoveryPrefix);
+    if (fixed) return fixed.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    var size = Number(length || _lanercExt.discoveryPrefixLength || 6);
+    if (!isFinite(size) || size < 4 || size > 16) size = 6;
+    var alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var result = '';
+    while (result.length < size) {
+        result += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    }
+    return result;
+}
+
+
+
+function _lanercRawJsonGet(url, timeoutMs, extraHeaders) {
+    var target = String(url || '');
+    try {
+        var raw = request(target, _requestOptions(false, timeoutMs, target, extraHeaders));
+        var parsed = _safeParse(raw, null);
+        if (!parsed || typeof parsed !== 'object') return {};
+        return _decodeApiResponse(parsed);
+    } catch (error) {
+        _lanercLog('动态配置请求失败：' + target + '；' + String(error));
+        return {};
+    }
+}
+
+
+
+function _lanercDiscoveryUrls() {
+    var supplied = _lanercStringList(_lanercExt.configUrl || _lanercExt.discoveryUrls, []);
+    if (supplied.length) return supplied;
+    var prefix = _lanercRandomToken();
+    var domain = _legacyTrim(_lanercExt.discoveryDomain) || _LANERC_DISCOVERY_DOMAIN;
+    var path = (_legacyTrim(_lanercExt.discoveryPath) || _LANERC_DISCOVERY_PATH).replace(/^\/+/, '');
+    return [
+        'https://' + prefix + '.' + domain + '/' + path,
+        'http://' + prefix + '.' + domain + '/' + path,
+        _LANERC_DISCOVERY
+    ];
+}
+
+
+
+function _lanercConfigHost(value) {
+    var source = value;
+    if (typeof source === 'string') {
+        var parsed = _safeParse(source, source);
+        source = parsed;
+    }
+    var candidate = typeof source === 'string' ? source : _findDeepAny(source, [
+        'domain', 'host', 'api', 'apiHost', 'baseUrl', 'base_url'
+    ]);
+    var host = _normalizeDiscoveredHost(candidate);
+    if (_isStaleLanercHost(host)) return '';
+    return host;
+}
+
+
+
+function _lanercDnsTxtData(response) {
+    var answers = response && typeof response === 'object' ? _findDeep(response, 'Answer') : null;
+    if (!answers) return '';
+    if (!_legacyIsArray(answers)) answers = [answers];
+    for (var index = 0; index < answers.length; index += 1) {
+        var answer = answers[index];
+        var data = answer && typeof answer === 'object' ? answer.data : answer;
+        var text = _legacyTrim(data);
+        if (!text) continue;
+        text = text
+            .replace(/^['"]+|['"]+$/g, '')
+            .replace(/"\s+"/g, '')
+            .replace(/\\"/g, '"')
+            .replace(/[^A-Za-z0-9+\/=]/g, '');
+        if (text) return text;
+    }
+    return '';
+}
+
+
+
+function _discoverLanercDnsHost() {
+    var names = _lanercStringList(_lanercExt.dohNames, _LANERC_DOH_NAMES);
+    var resolvers = _lanercStringList(_lanercExt.dohResolvers, _LANERC_DOH_RESOLVERS);
+    var key = _legacyTrim(_lanercExt.dohKey) || _LANERC_DOH_DECRYPT_KEY;
+    var timeout = Number(_lanercExt.dohTimeout || Math.min(_LANERC_PROBE_TIMEOUT_MS, 2200));
+    for (var resolverIndex = 0; resolverIndex < resolvers.length; resolverIndex += 1) {
+        var base = String(resolvers[resolverIndex] || '').replace(/\/+$/, '') + '/';
+        for (var nameIndex = 0; nameIndex < names.length; nameIndex += 1) {
+            var url = base + 'resolve?name=' + encodeUri(names[nameIndex]) + '&type=txt';
+            var response = _lanercRawJsonGet(url, timeout, { Accept: 'application/dns-json' });
+            var ciphertext = _lanercDnsTxtData(response);
+            if (!ciphertext) continue;
+            var plain = _decryptLanercStandardBase64(ciphertext, key);
+            var host = _normalizeDiscoveredHost(plain);
+            if (host && !_isStaleLanercHost(host)) {
+                _lanercLog('DNS TXT 已恢复 API 地址：' + host);
+                return host;
+            }
+        }
+    }
+    return '';
+}
+
+
+
+function _discoverLanercHost() {
+    var urls = _lanercDiscoveryUrls();
+    for (var index = 0; index < urls.length; index += 1) {
+        var discovery = _lanercRawJsonGet(urls[index], _LANERC_PROBE_TIMEOUT_MS, {
+            Accept: 'application/json'
+        });
+        var host = _lanercConfigHost(discovery);
+        if (host) {
+            _lanercLog('在线配置已发现 API 地址：' + host);
+            return host;
+        }
+    }
+    return _discoverLanercDnsHost();
+}
+
+
+
+function _lanercHealthPath(seconds) {
+    var timeValue = seconds === null || seconds === undefined
+        ? Math.floor(Number(timestamp()) / 1000)
+        : Math.floor(Number(seconds));
+    var secret = _legacyTrim(_lanercExt.healthSecret) || _LANERC_HEALTH_SECRET;
+    var digest = md5('/app/health@' + timeValue + '@' + secret);
+    return 'app/health?sign=' + encodeUri(String(digest).toLowerCase());
+}
+
+
+
+function _lanercHealthOk(value) {
+    var data = _payload(value);
+    if (!data || typeof data !== 'object') return false;
+    if (data.status === true || String(data.status).toLowerCase() === 'true') return true;
+    if (data.ok === true || data.success === true) return true;
+    var code = Number(data.code);
+    return isFinite(code) && (code === 0 || code === 200);
+}
+
+
+
+function _lanercHostCandidates(host) {
+    var normalized = _normalizeDiscoveredHost(host);
+    if (!normalized) return [];
+    var result = [];
+    if (/^http:\/\//i.test(normalized)) {
+        result.push(normalized.replace(/^http:/i, 'https:'));
+        if (_lanercAllowHttpFallback()) result.push(normalized);
+    } else {
+        result.push(normalized);
+        if (_lanercAllowHttpFallback()) result.push(normalized.replace(/^https:/i, 'http:'));
+    }
+    return result;
+}
+
+
+
+function _probeLanercHost(host) {
+    var candidates = _lanercHostCandidates(host);
+    for (var index = 0; index < candidates.length; index += 1) {
+        var candidate = candidates[index];
+        _lanercDirectUsed = false;
+        var health = _requestJson(candidate + _lanercHealthPath(), _LANERC_PROBE_TIMEOUT_MS);
+        if (_lanercHealthOk(health)) {
+            return _lanercDirectUsed ? _lanercDirectHostUrl() : candidate;
+        }
+        var home = _payload(_requestJson(candidate + 'app/home', _LANERC_PROBE_TIMEOUT_MS));
+        if (home && typeof home === 'object' &&
+            (_legacyOwn(home, 'vod_list') || _legacyOwn(home, 'banner') || _legacyOwn(home, 'hot_list'))) {
+            _lanercHome = home;
+            return _lanercDirectUsed ? _lanercDirectHostUrl() : candidate;
+        }
+    }
+    return '';
+}
+
+
+
 function _resolveHost() {
     if (_lanercHost) return _lanercHost;
+    var discoveryMode = _lanercDiscoveryMode();
     _lanercHost = _normalizeHost(_lanercExt.host);
-    if (_lanercHost) return _lanercHost;
+    if (_isLegacyLanercIpHost(_lanercHost) &&
+        !_legacyTrim(_lanercExt.apiIp || _lanercExt.directIp)) {
+        _lanercLog('忽略旧版 ext.host 直连 IP，恢复 lol.jngaoke.cn 域名/SNI 主链');
+        _lanercHost = '';
+    }
+    if (_lanercHost && !_isStaleLanercHost(_lanercHost) && discoveryMode !== 'dynamic') return _lanercHost;
+    if (_lanercHost) {
+        _lanercLog((discoveryMode === 'dynamic' ? 'dynamic 模式忽略 ext.host：' :
+            '运行器传入旧域名，忽略 ext.host：') + _lanercHost);
+        _lanercHost = '';
+    }
+    if (discoveryMode === 'dynamic') {
+        var forcedDynamicHost = _probeLanercHost(_discoverLanercHost());
+        if (forcedDynamicHost) {
+            _lanercHost = forcedDynamicHost;
+            return _lanercHost;
+        }
+    }
 
-    var fallbackProbe = _payload(_requestJson(_LANERC_FALLBACK_HOST + 'app/home', _LANERC_PROBE_TIMEOUT_MS));
+    var fallbackUrl = _LANERC_FALLBACK_HOST + 'app/home';
+    var fallbackProbe = _payload(_requestJson(fallbackUrl, _LANERC_PROBE_TIMEOUT_MS));
     if (fallbackProbe && typeof fallbackProbe === 'object' &&
         (_legacyOwn(fallbackProbe, 'vod_list') || _legacyOwn(fallbackProbe, 'banner') || _legacyOwn(fallbackProbe, 'hot_list'))) {
         _lanercHome = fallbackProbe;
-        _lanercHost = _LANERC_FALLBACK_HOST;
+        _lanercHost = (_lanercAllowHttpFallback() && _lanercDirectUsed)
+            ? _lanercDirectHostUrl() : _LANERC_FALLBACK_HOST;
         return _lanercHost;
     }
 
-    _lanercLog('静态回退站探测失败，尝试在线域名发现');
-    var configUrl = String(_lanercExt.configUrl || _LANERC_DISCOVERY);
-    var discovery = _requestJson(configUrl, _LANERC_PROBE_TIMEOUT_MS);
-    var discoveredHost = _normalizeHost(_findDeep(discovery, 'domain'));
-    if (_isStaleLanercHost(discoveredHost)) {
-        _lanercLog('在线配置仍为证书过期旧站点，改用静态回退地址');
-        discoveredHost = '';
+    if (_lanercAllowHttpFallback()) {
+        var directProbe = _payload(_requestJson(_lanercDirectHostUrl() + 'app/home', _LANERC_PROBE_TIMEOUT_MS));
+        if (directProbe && typeof directProbe === 'object' &&
+            (_legacyOwn(directProbe, 'vod_list') || _legacyOwn(directProbe, 'banner') || _legacyOwn(directProbe, 'hot_list'))) {
+            _lanercHome = directProbe;
+            _lanercHost = _lanercDirectHostUrl();
+            _lanercLog('已切换显式兼容直连 API 节点：' + _lanercHost);
+            return _lanercHost;
+        }
     }
-    _lanercHost = discoveredHost;
+
+    if (discoveryMode !== 'fixed') {
+        _lanercLog('静态回退站探测失败，尝试在线域名发现');
+        var discoveredHost = _probeLanercHost(_discoverLanercHost());
+        _lanercHost = discoveredHost;
+    }
     if (!_lanercHost) {
         _lanercLog('域名发现失败，使用静态回退地址');
         _lanercHost = _LANERC_FALLBACK_HOST;
@@ -813,7 +1886,11 @@ function _lanercSignedApiPath(path, seconds, nonce) {
 
 
 function _apiPost(path, body) {
-    return _postJson(_resolveHost() + String(path || '').replace(/^\/+/, ''), body);
+    var cleanPath = String(path || '').replace(/^\/+/, '');
+    var signed = cleanPath === _LANERC_GUEST_CAPTCHA_PATH ||
+        cleanPath === _LANERC_GUEST_CREDENTIAL_PATH;
+    var requestPath = signed ? _lanercSignedApiPath(cleanPath) : cleanPath;
+    return _postJson(_resolveHost() + requestPath, body, signed ? 'guestJson' : '');
 }
 
 
@@ -1145,7 +2222,8 @@ function searchFiltered(category, filtersJson, page) {
 
 function _loadRuntimeConfig() {
     if (_lanercRuntime !== null) return _lanercRuntime;
-    var data = _apiGet('app/config?platform=android');
+    var configPath = _legacyTrim(_lanercExt.runtimeConfigPath) || _LANERC_RUNTIME_CONFIG_PATH;
+    var data = _apiGet(configPath);
     _lanercRuntime = {
         sign: String(_findDeep(data, 'sign') || ''),
         auth: String(_findDeep(data, 'auth') || '')
@@ -1157,12 +2235,14 @@ function _loadRuntimeConfig() {
 
 function _runtimeValues(flagData) {
     var flag = flagData && typeof flagData === 'object' ? flagData : {};
-    var config = _loadRuntimeConfig();
     var sign = _firstValue(flag, ['sign']);
     if (sign === '') sign = _firstValue(_lanercExt, ['sign']);
-    if (sign === '') sign = _LANERC_BUILD_SIGNATURE;
     var auth = _firstValue(flag, ['auth']);
     if (auth === '') auth = _firstValue(_lanercExt, ['auth']);
+    if (sign !== '' && auth !== '') return { sign: String(sign), auth: String(auth) };
+    var config = _loadRuntimeConfig();
+    if (sign === '') sign = config.sign;
+    if (sign === '') sign = _LANERC_BUILD_SIGNATURE;
     if (auth === '') auth = config.auth;
     if (auth === '') auth = _LANERC_AUTH_FALLBACK;
     return { sign: String(sign || ''), auth: String(auth) };
@@ -1185,18 +2265,35 @@ function _videoItems(value) {
 
 function _episodePart(value, fallbackName) {
     if (value && typeof value === 'object') {
-        var objectVid = _firstValue(value, ['vid', 'url', 'value']);
+        var objectVid = _firstValue(value, [
+            'resource_id', 'resourceId', 'vid', 'video_id', 'videoId',
+            'episode_id', 'episodeId', 'id', 'url', 'value'
+        ]);
         return {
             name: String(_firstValue(value, ['name', 'title']) || fallbackName || ''),
             vid: String(objectVid || ''),
-            raw: String(_firstValue(value, ['raw', 'url', 'vid', 'value']) || '')
+            raw: String(_firstValue(value, [
+                'raw', 'url', 'resource_id', 'resourceId', 'vid', 'video_id',
+                'videoId', 'episode_id', 'episodeId', 'id', 'value'
+            ]) || ''),
+            resourceId: String(_firstValue(value, ['resource_id', 'resourceId']) || ''),
+            canPlayWithoutLogin: _lanercBoolean(
+                _firstValue(value, ['can_play_without_login', 'canPlayWithoutLogin']), true
+            )
         };
     }
     var raw = value === null || value === undefined ? '' : String(value);
     var parts = raw.split('$');
+    var videoValue = parts.length > 1 ? parts[parts.length - 1] : raw;
+    for (var partIndex = 1; partIndex < parts.length; partIndex += 1) {
+        if (/^https?:\/\//i.test(_legacyTrim(parts[partIndex]))) {
+            videoValue = parts[partIndex];
+            break;
+        }
+    }
     return {
         name: String(parts[0] || fallbackName || ''),
-        vid: String(parts.length > 1 ? parts[1] : raw),
+        vid: String(videoValue || ''),
         raw: raw
     };
 }
@@ -1219,7 +2316,7 @@ function _isMainLine(line) {
 
 
 
-function _episodes(playList, runtime) {
+function _episodes(playList, runtime, contentId) {
     var lines = _legacyIsArray(playList) ? playList.slice() : [];
     lines.sort(_sortPlayLines);
     
@@ -1256,6 +2353,14 @@ function _episodes(playList, runtime) {
                 sign: runtime.sign,
                 auth: runtime.auth
             };
+            if (part.resourceId) {
+                flag.resourceId = part.resourceId;
+                flag.canPlayWithoutLogin = part.canPlayWithoutLogin;
+                var knownLegacy = _LANERC_LEGACY_MEDIA_BY_CONTENT[String(contentId || '')];
+                if (_legacyIsArray(knownLegacy) && knownLegacy[videoIndex]) {
+                    flag.legacyVid = String(knownLegacy[videoIndex]);
+                }
+            }
             result.push({ name: part.name, url: JSON.stringify(flag), route: lineName });
         }
     }
@@ -1267,9 +2372,15 @@ function _episodes(playList, runtime) {
 function detail(id) {
     var contentId = id === null || id === undefined ? '' : String(id);
     try {
-        var data = _payload(_apiGet('app/getvod/' + encodeUri(contentId)));
+        var data = _payload(_apiGet(_LANERC_V2_DETAIL_PATH + encodeUri(contentId)));
+        var usedV2 = !!(data && typeof data === 'object' &&
+            (data.video_play_info || data.video_play_list));
+        if (!data || typeof data !== 'object' ||
+            (!data.video_play_info && !data.video_play_list)) {
+            data = _payload(_apiGet('app/getvod/' + encodeUri(contentId)));
+        }
         var info = data.video_play_info && typeof data.video_play_info === 'object' ? data.video_play_info : data;
-        var runtime = _runtimeValues({});
+        var runtime = usedV2 ? { sign: '', auth: '' } : _runtimeValues({});
         
         _lanercLastDetail = { id: contentId, classId: _legacyTrim(String(_firstValue(info, ['vod_type']) || '')) };
         return JSON.stringify({
@@ -1281,7 +2392,7 @@ function detail(id) {
             year: String(_firstValue(info, ['vod_year', 'year']) || ''),
             remarks: String(_firstValue(info, ['vod_sub', 'vod_remarks']) || ''),
             score: String(_firstValue(info, ['vod_score', 'score']) || ''),
-            episodes: _episodes(data.video_play_list, runtime)
+            episodes: _episodes(data.video_play_list, runtime, contentId)
         });
     } catch (error) {
         _lanercLog('详情转换失败：' + String(error));
@@ -1293,7 +2404,10 @@ function detail(id) {
 
 function _resolveContentClass(contentId) {
     if (_lanercLastDetail && String(_lanercLastDetail.id) === contentId) return _lanercLastDetail.classId;
-    var data = _payload(_apiGet('app/getvod/' + encodeUri(contentId)));
+    var data = _payload(_apiGet(_LANERC_V2_DETAIL_PATH + encodeUri(contentId)));
+    if (!data || typeof data !== 'object' || !data.video_play_info) {
+        data = _payload(_apiGet('app/getvod/' + encodeUri(contentId)));
+    }
     var info = data.video_play_info && typeof data.video_play_info === 'object' ? data.video_play_info : data;
     return _legacyTrim(String(_firstValue(info, ['vod_type']) || ''));
 }
@@ -1331,14 +2445,24 @@ function _mediaType(url) {
 
 
 
-function _isLanercWarningPlaylist(url) {
+function _shouldBlockLanercWarningPlaylist() {
+    var value = _lanercExt.blockWarningPlaylist;
+    if (value === null || value === undefined || value === '') return _LANERC_BLOCK_WARNING_PLAYLIST;
+    return value === true || value === 1 || String(value).toLowerCase() === 'true';
+}
+
+
+
+function _inspectLanercPlaylist(url, headers) {
     var value = String(url || '');
-    if (!/^https?:\/\/file\.jngaoke\.cn\/.*\.m3u8(?:$|[?#])/i.test(value)) return false;
+    if (!/^https?:\/\//i.test(value)) return -1;
+    if (!/\.m3u8(?:$|[?#])/i.test(value)) return 0;
     try {
         var playlist = String(request(
             value,
-            _requestOptions(false, _LANERC_WARNING_PLAYLIST_TIMEOUT_MS)
+            _requestOptions(false, _LANERC_WARNING_PLAYLIST_TIMEOUT_MS, value, headers)
         ) || '');
+        if (!/^#EXTM3U/m.test(playlist)) return -1;
         var pattern = /#EXTINF:\s*([0-9]+(?:\.[0-9]+)?)/ig;
         var count = 0;
         var duration = 0;
@@ -1347,13 +2471,115 @@ function _isLanercWarningPlaylist(url) {
             count += 1;
             duration += Number(matched[1]);
         }
-        return count >= 10 && duration >= 179 && duration <= 181;
+        var lines = playlist.split(/\r?\n/);
+        var segmentCount = 0;
+        var disguisedSegmentCount = 0;
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+            var line = _legacyTrim(lines[lineIndex]);
+            if (!line || line.charAt(0) === '#') continue;
+            segmentCount += 1;
+            if (/\.(?:png|jpe?g|webp|gif)(?:$|[?#])/i.test(line)) disguisedSegmentCount += 1;
+        }
+        if (segmentCount < 1) return -1;
+        if (count >= 10 && duration >= 179 && duration <= 181) return 1;
+        if (count >= 10 && duration >= 239 && duration <= 241 && disguisedSegmentCount > 0) return 1;
+        if (count === 144 && segmentCount === 144 && disguisedSegmentCount === 144 &&
+            duration >= 1199 && duration <= 1201) return 1;
+        if (count === 173 && segmentCount === 173 && disguisedSegmentCount === 173 &&
+            duration >= 1439 && duration <= 1441) return 1;
+        return 0;
     } catch (error) {
         _lanercLog('防盗提示片检测失败：' + String(error));
-        return false;
+        return -1;
     }
 }
 
+
+
+function _lanercOfficialMediaCandidates(vid) {
+    var episodeId = _legacyTrim(vid).toLowerCase();
+    if (!/^[0-9a-f]{32}$/.test(episodeId)) return [];
+    var hosts = _lanercStringList(_lanercExt.officialMediaHosts, _LANERC_OFFICIAL_MEDIA_HOSTS);
+    var buckets = _lanercStringList(_lanercExt.officialMediaBuckets, _LANERC_OFFICIAL_MEDIA_BUCKETS);
+    var list = [];
+    for (var hostIndex = 0; hostIndex < hosts.length; hostIndex += 1) {
+        var host = _legacyTrim(hosts[hostIndex]).replace(/\/+$/, '');
+        if (!/^https?:\/\//i.test(host)) continue;
+        for (var bucketIndex = 0; bucketIndex < buckets.length; bucketIndex += 1) {
+            var bucket = _legacyTrim(buckets[bucketIndex]).replace(/^\/+|\/+$/g, '');
+            if (!bucket) continue;
+            list.push(host + '/' + bucket + '/' + episodeId + '.m3u8');
+        }
+    }
+    return list;
+}
+
+
+
+function _resolveLanercOfficialMedia(vid) {
+    var candidates = _lanercOfficialMediaCandidates(vid);
+    for (var index = 0; index < candidates.length; index += 1) {
+        var url = candidates[index];
+        if (_inspectLanercPlaylist(url, {}) === 0) {
+            if (index > 0) _lanercLog('官方正片命中备用镜像：' + url);
+            return url;
+        }
+    }
+    return '';
+}
+
+
+
+function _isLanercWarningPlaylist(url, headers) {
+    return _inspectLanercPlaylist(url, headers) === 1;
+}
+
+
+
+function _lanercPlayError(message, needBind) {
+    var text = String(message || '未获取到播放地址');
+    return JSON.stringify({
+        url: '',
+        type: 'auto',
+        error: text,
+        _server_msg: text,
+        needBind: needBind === true
+    });
+}
+
+
+
+function _resolveLanercPlay(body, forcedMode) {
+    var resolverMode = _legacyTrim(forcedMode || _lanercExt.playResolver || _lanercExt.resolver || _LANERC_PLAY_RESOLVER).toLowerCase();
+    if (resolverMode !== 'x3x' && resolverMode !== 'x4x' && resolverMode !== 'auto') resolverMode = 'auto';
+    var useProtobuf = resolverMode !== 'x3x' &&
+        _lanercBoolean(_lanercExt.playResolveProtobuf, true);
+    if (useProtobuf) {
+        try {
+            var protobuf = _postLanercProtobuf(
+                _resolveHost() + _lanercSignedApiPath(_LANERC_PLAY_RESOLVE_PATH), body
+            );
+            var protobufUrl = _playUrlFromProtobufResponse(protobuf);
+            if (protobufUrl) {
+                return {
+                    url: protobufUrl,
+                    response: { play_url: protobufUrl, resolver: 'proxyx4x' },
+                    resolver: 'proxyx4x'
+                };
+            }
+            _lanercLog('proxyx4x 未解出服务端 playUrl，不降级旧 proxyx3x');
+        } catch (protobufError) {
+            _lanercLog('proxyx4x 解码失败，不降级旧 proxyx3x：' + String(protobufError));
+        }
+        return { url: '', response: {}, resolver: 'proxyx4x' };
+    }
+    var response = _apiPost(_lanercSignedApiPath('app/proxyx3x'), body);
+    return {
+        url: _playUrlFromResponse(response),
+        response: response,
+        resolver: 'proxyx3x'
+    };
+}
 
 
 function play(flag) {
@@ -1361,8 +2587,81 @@ function play(flag) {
         var parsed = _safeParse(flag, null);
         var flagData = parsed && typeof parsed === 'object' && !_legacyIsArray(parsed) ? parsed : {};
         var rawFlag = flag === null || flag === undefined ? '' : String(flag);
-        var vid = _firstValue(flagData, ['vid']);
-        if (vid === '') vid = rawFlag;
+        var resourceId = _firstValue(flagData, ['resource_id', 'resourceId']);
+        if (resourceId !== '') resourceId = _normalizePlayText(resourceId);
+        if (resourceId) {
+            var v2Response = _postLanercV2Play(resourceId);
+            var v2Url = _playUrlFromProtobufResponse(v2Response);
+            if (v2Url) {
+                var v2Result = _playResult({ resolver: 'v2' }, v2Url);
+                if (_shouldBlockLanercWarningPlaylist() &&
+                    _inspectLanercPlaylist(v2Url, v2Result.headers || {}) === 1) {
+                    return _lanercPlayError('检测到升级提示片，当前线路不可播放');
+                }
+                return JSON.stringify(v2Result);
+            }
+            var guestRecord = _lanercGuestCredentialRecord(flagData);
+            if (guestRecord.error) return _lanercPlayError(guestRecord.error);
+            if (guestRecord.credential) {
+                var guestResponse = _postLanercGuestPlay(resourceId, guestRecord);
+                var guestUrl = _playUrlFromProtobufResponse(guestResponse);
+                if (guestUrl) {
+                    var guestResult = _playResult({ resolver: 'guest-v2' }, guestUrl);
+                    if (_shouldBlockLanercWarningPlaylist() &&
+                        _inspectLanercPlaylist(guestUrl, guestResult.headers || {}) === 1) {
+                        return _lanercPlayError('检测到升级提示片，当前游客线路不可播放');
+                    }
+                    return JSON.stringify(guestResult);
+                }
+            }
+            var legacyVid = _normalizePlayText(_firstValue(flagData, ['legacyVid', 'legacy_vid']));
+            if (legacyVid) {
+                var legacyUrl = _resolveLanercOfficialMedia(legacyVid);
+                if (legacyUrl) {
+                    _lanercLog('v2 登录门槛命中已验证旧媒体映射：' + legacyUrl);
+                    return JSON.stringify({ url: legacyUrl, type: 'm3u8' });
+                }
+            }
+            if (_lanercBoolean(_firstValue(flagData, ['canPlayWithoutLogin', 'can_play_without_login']), true) === false) {
+                if (guestRecord.credential) {
+                    return _lanercPlayError('游客设备凭证无效或已失效，请在自己的设备重新完成官方 App 游客验证', true);
+                }
+                return _lanercPlayError('该剧集需要游客设备凭证，请在自己的设备完成官方 App 游客验证后配置 guestCredential', true);
+            }
+            return _lanercPlayError('新版播放接口未返回媒体地址');
+        }
+        var vid = _firstValue(flagData, [
+            'vid', 'video_id', 'videoId', 'episode_id', 'episodeId', 'play_url', 'playUrl', 'url'
+        ]);
+        if (vid === '') {
+            vid = rawFlag;
+            if (!parsed && rawFlag.indexOf('$') !== -1) vid = _episodePart(rawFlag, '').vid;
+        }
+        vid = _normalizePlayText(vid);
+        if (vid.indexOf('$') !== -1 && !/^https?:\/\//i.test(vid)) {
+            vid = _episodePart(vid, '').vid;
+        }
+        if (/^https?:\/\/[^\s]+\.(?:m3u8|mp4|flv)(?:$|[?#])/i.test(vid)) {
+            if (_shouldBlockLanercWarningPlaylist() && /\.m3u8(?:$|[?#])/i.test(vid)) {
+                var directState = _inspectLanercPlaylist(vid, {});
+                if (directState === 1) return _lanercPlayError('检测到防盗提示片，当前线路不可播放');
+            }
+            return JSON.stringify({ url: vid, type: _mediaType(vid) });
+        }
+        var requestedResolver = _legacyTrim(_lanercExt.playResolver || _lanercExt.resolver || _LANERC_PLAY_RESOLVER).toLowerCase();
+        var officialOnly = requestedResolver === 'official' || requestedResolver === 'direct' || requestedResolver === 'media';
+        if (requestedResolver !== 'x3x' && requestedResolver !== 'x4x' && requestedResolver !== 'auto' && !officialOnly) {
+            requestedResolver = 'auto';
+        }
+        if (officialOnly) {
+            var officialOnlyUrl = _resolveLanercOfficialMedia(vid);
+            if (officialOnlyUrl) return JSON.stringify({ url: officialOnlyUrl, type: 'm3u8' });
+            return _lanercPlayError('官方正片镜像暂不可用');
+        }
+        if (requestedResolver === 'auto') {
+            var officialUrl = _resolveLanercOfficialMedia(vid);
+            if (officialUrl) return JSON.stringify({ url: officialUrl, type: 'm3u8' });
+        }
         var runtime = _runtimeValues(flagData);
         var body = {
             vid: String(vid || ''),
@@ -1370,22 +2669,101 @@ function play(flag) {
             sign: runtime.sign,
             auth: runtime.auth
         };
-        if (!body.vid) return JSON.stringify({ url: '', type: 'auto' });
-        var response = _apiPost(_lanercSignedApiPath('app/proxyx3x'), body);
-        var playUrl = String(_findDeep(response, 'play_url') || '');
-        if (_isLanercWarningPlaylist(playUrl)) {
-            _lanercLog('检测到 180 秒防盗提示片，重新签名请求一次');
-            response = _apiPost(_lanercSignedApiPath('app/proxyx3x'), body);
-            playUrl = String(_findDeep(response, 'play_url') || '');
-            if (_isLanercWarningPlaylist(playUrl)) {
-                _lanercLog('检测到 180 秒防盗提示片，已拦截播放');
-                return JSON.stringify({ url: '', type: 'auto' });
-            }
+        if (!body.vid) return _lanercPlayError('缺少剧集播放标识');
+        var resolved = _resolveLanercPlay(body,
+            requestedResolver === 'x3x' || requestedResolver === 'x4x' ? requestedResolver : 'auto');
+        var response = resolved.response;
+        var playUrl = resolved.url;
+        if (!playUrl) return _lanercPlayError('播放接口未返回媒体地址');
+        var result = _playResult(response, playUrl);
+        var playlistState = _shouldBlockLanercWarningPlaylist()
+            ? _inspectLanercPlaylist(playUrl, result.headers || {}) : 0;
+        if (_shouldBlockLanercWarningPlaylist() && playlistState === 1) {
+            _lanercLog('检测到防盗提示片（' + resolved.resolver + '），重新签名请求一次');
+            if (playlistState === 1) return _lanercPlayError('检测到防盗提示片，当前线路不可播放');
         }
-        return JSON.stringify({ url: playUrl, type: _mediaType(playUrl) });
+        return JSON.stringify(result);
     } catch (error) {
         _lanercLog('播放解析失败：' + String(error));
-        return JSON.stringify({ url: '', type: 'auto' });
+        return _lanercPlayError('播放解析失败：' + String(error));
+    }
+}
+
+
+// ───────────────────────────── 源自带弹幕（barragev2）─────────────────────────────
+// 依据 lanerc 1.08 逆向 + 真机 replay 核对：GET app/chat/barragev2?vid=<内容id>&vod=<集号(1基)>，
+// 返回 code=201 的 AES 密文（_apiGet 里 _decodeApiResponse 已自动解密），明文 { new_barrages, old_barrages }。
+// 单条 { id, bcolor:"#AARRGGBB", position:0滚动/1顶部, second:秒, content:文本 }。
+// 已用 6703 实测确认：vid=内容 id（= detail 存的 _lanercLastDetail.id）、vod=集号(=episode+1，vod=1/2 返回不同集)、
+// second=秒。App 契约只认 [{time(秒),text,color?}]，position(顶/滚) 当前无处安放，先忽略。
+
+
+function _lanercDanmuContentId(payload) {
+    if (_lanercLastDetail && _lanercLastDetail.id) return String(_lanercLastDetail.id);
+    var title = _legacyTrim(payload && payload.title);
+    if (!title) return '';
+    try {
+        var cards = _safeParse(search(title, 1), []);
+        if (_legacyIsArray(cards) && cards.length) return String(cards[0].id || '');
+    } catch (error) {
+        _lanercLog('弹幕定位内容 id 失败：' + String(error));
+    }
+    return '';
+}
+
+
+function _lanercDanmuColor(value) {
+    if (value === null || value === undefined || value === '') return 16777215;
+    var text = String(value).replace(/^#/, '');
+    if (/^[0-9a-f]{8}$/i.test(text)) return parseInt(text.slice(2), 16); // "#AARRGGBB"：丢 alpha 取 RGB
+    if (/^[0-9a-f]{6}$/i.test(text)) return parseInt(text, 16);
+    var num = Number(text);
+    return isFinite(num) && num > 0 ? Math.floor(num) : 16777215;
+}
+
+
+function _lanercDanmuList(data) {
+    var out = [];
+    var groups = [data.new_barrages, data.old_barrages];
+    for (var g = 0; g < groups.length; g += 1) {
+        var list = groups[g];
+        if (typeof list === 'string') list = _safeParse(list, []);
+        if (!_legacyIsArray(list)) continue;
+        for (var i = 0; i < list.length; i += 1) {
+            var item = list[i] || {};
+            var rawTime = _firstValue(item, ['second', 'time_point', 'time', 'sec', 'offset']);
+            if (rawTime === '') continue;
+            var time = Number(rawTime);
+            if (!isFinite(time) || time < 0) continue;
+            var text = _legacyTrim(_firstValue(item, ['content', 'text', 'msg']));
+            if (!text) continue;
+            out.push({
+                time: time,
+                text: text,
+                color: _lanercDanmuColor(_firstValue(item, ['bcolor', 'color']))
+            });
+        }
+    }
+    return out;
+}
+
+
+function danmu(payloadJson) {
+    try {
+        var payload = _safeParse(payloadJson, {}) || {};
+        var contentId = _lanercDanmuContentId(payload);
+        if (!contentId) return '[]';
+        var episodeNo = Math.floor(Number(payload.episode));
+        if (!isFinite(episodeNo) || episodeNo < 0) episodeNo = 0;
+        var vod = episodeNo + 1;
+        var data = _payload(_apiGet(
+            'app/chat/barragev2?vid=' + encodeUri(contentId) + '&vod=' + encodeUri(String(vod))
+        ));
+        if (!data || typeof data !== 'object') return '[]';
+        return JSON.stringify(_lanercDanmuList(data));
+    } catch (error) {
+        _lanercLog('弹幕获取失败：' + String(error));
+        return '[]';
     }
 }
 
@@ -1454,34 +2832,11 @@ function PreferenceComponent_getPreference() {
 function getHomeSectionsCached() { return S_HOME != null ? S_HOME : []; }
 function getCatsCached() { return S_CATS != null ? S_CATS : []; }
 
-// 每源同步兜底分类（getMainTabs 不能联网，用此表保证首页有分类标签；内容由 getContent 按分区/分类加载）
-var SOURCE_FALLBACK_TABS = {
-    "com.lanerc.lanerc":     ["热门", "日漫", "剧场版", "推荐"],
-    "com.lanerc.auvfun":     ["推荐", "日漫", "国漫", "4K"],
-    "com.lanerc.jinpai":     ["推荐", "全部"],
-    "com.lanerc.cycapp":     ["推荐", "TV动画", "剧场版", "4K专区", "国漫"],
-    "com.lanerc.guazi":      ["日番", "国漫", "欧美"],
-    "com.lanerc.shuangxing": ["推荐", "动漫", "剧场", "四月番剧", "七月新番"],
-    "com.lanerc.shutiao":    ["推荐", "动漫"],
-    "com.lanerc.yzx":        ["推荐", "全部"],
-    "com.lanerc.xifanacg":   ["推荐", "连载新番"],
-    "com.lanerc.sanqiu":     ["推荐", "全部"],
-    "com.lanerc.akianime":   ["推荐", "日漫", "国漫"],
-    "com.lanerc.lmm85":      ["推荐", "最近更新", "日本动漫", "国产动漫", "欧美动漫", "动态漫画", "动画电影", "热门"],
-    "com.lanerc.gugu":       ["推荐", "番剧"],
-    "com.lanerc.dmbus":      ["国漫", "日漫", "欧美", "电影"]
-};
-
 function PageComponent_getMainTabs() {
     var res = new ArrayList();
     var seen = {};
     res.add(new MainTab("首页", MainTab.MAIN_TAB_WITH_COVER));
     seen["首页"] = 1;
-    // 同步兜底分类（不联网，保证首次进入就有分类标签）
-    var fb = SOURCE_FALLBACK_TABS[source.key] || [];
-    for (var i = 0; i < fb.length; i++) {
-        if (!seen[fb[i]]) { seen[fb[i]] = 1; res.add(new MainTab(fb[i], MainTab.MAIN_TAB_WITH_COVER)); }
-    }
     // 若已有缓存（之前加载过内容），再补充真实分区，纯读缓存不联网
     var secs = getHomeSectionsCached();
     for (var i = 0; i < secs.length; i++) {
