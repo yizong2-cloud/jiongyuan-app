@@ -336,7 +336,7 @@ var UA = {
 
 var CHANNEL = '动漫';
 var PKG = 'com.baiyunvideo.app';
-var KEY = 'UvsoWWyu3PM8GpEsaqm4VsBcJrDJy7i7'; // AES-256 key（utf8 32 字节；2026-07 由 Zz4O… 轮换而来，详情解密 + 取流 vuk 签名共用）
+var KEY = 'Uvokilpu3PM8GpEsaqm4VsBcJrDJy7i7'; // 2026-08 源站热更新（js.z1i.cn/js/yzx.js） // AES-256 key（utf8 32 字节；2026-07 由 Zz4O… 轮换而来，详情解密 + 取流 vuk 签名共用）
 var BOOT = 'https://ss.trgfd.cn/cache/index/' + PKG + '.json';
 var HOST_DEFAULT = 'https://js.trgfd.cn';
 var VER_DEFAULT = '2.5.0';
