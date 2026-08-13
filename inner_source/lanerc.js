@@ -8,7 +8,7 @@
 // 囧源·LANERC 内容源（EasyBangumi / 纯纯看番 扩展）
 // 适配自 LANERC 系站点脚本，经 __JB 桥适配运行。免登录 / 免广告。
 //
-var ext = {};
+var ext = { coverSuffix: true };
 // ============================================================
 //  __JB 桥 shim —— 把源脚本用的桥函数映射到 EasyBangumi 的 Java 桥
 //  对齐 JsBuiltinFunctions.java 的语义，让 14 个原始源脚本几乎原样运行。
