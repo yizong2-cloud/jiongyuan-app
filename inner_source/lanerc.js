@@ -355,7 +355,7 @@ var _LANERC_BUILD_SIGNATURE = '74322D4D62B9F4A986DFA8973EE70EBC034E74551B8715C75
 var _LANERC_QUERY_SIGN_SECRET = '4x2g5efd84fb46a9'; // 2026-08 源站热更新（js.z1i.cn/js/lanerc.js）
 
 
-var _LANERC_API_UA = 'Dart/3.5 (dart:io)';
+var _LANERC_API_UA = 'Dart/3.9.2'; // 2026-08 源站热更新（js.z1i.cn/js/lanerc.js）
 var _lanercExt = typeof ext === 'object' && ext ? ext : {};
 var _lanercHost = '';
 var _lanercHome = null;
